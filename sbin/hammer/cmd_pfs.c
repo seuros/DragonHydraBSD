@@ -537,8 +537,13 @@ init_pfsd(hammer_pseudofs_data_t pfsd, int is_slave)
 	pfsd->sync_end_tid = 1;
 	pfsd->sync_beg_ts = 0;
 	pfsd->sync_end_ts = 0;
-	hammer_uuid_create(&pfsd->shared_uuid);
-	hammer_uuid_create(&pfsd->unique_uuid);
+	{
+		uuid_t tmp;
+		hammer_uuid_create(&tmp);
+		pfsd->shared_uuid = tmp;
+		hammer_uuid_create(&tmp);
+		pfsd->unique_uuid = tmp;
+	}
 	if (is_slave)
 		pfsd->mirror_flags |= HAMMER_PFSD_SLAVE;
 }

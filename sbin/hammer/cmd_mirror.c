@@ -1585,7 +1585,8 @@ validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 	 */
 	{
 		uuid_t tmp_shared = mrec->pfs.pfsd.shared_uuid;
-		if (hammer_uuid_compare(&tmp_shared, &pfsd.shared_uuid)) {
+		uuid_t tmp_target = pfsd.shared_uuid;
+		if (hammer_uuid_compare(&tmp_shared, &tmp_target)) {
 			errx(1, "mirror-write: source and target have "
 				"different shared-uuid's!");
 			/* not reached */
