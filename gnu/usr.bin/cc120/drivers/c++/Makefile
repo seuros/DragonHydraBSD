@@ -1,4 +1,5 @@
 GCC_LANG_DIR=	gcc/cp
+CSTD=
 .include "../Makefile.inc"
 .include "../../Makefile.langs"
 .include "../../../Makefile.cco"
