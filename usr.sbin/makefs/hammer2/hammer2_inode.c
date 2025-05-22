@@ -1198,19 +1198,27 @@ hammer2_inode_create_normal(hammer2_inode_t *pip,
 	xuid = vop_helper_create_uid(dip->pmp->mp, pip_mode,
 				     xuid, cred,
 				     &vap->va_mode);
-	if (vap->va_vaflags & VA_UID_UUID_VALID)
+	if (vap->va_vaflags & VA_UID_UUID_VALID) {
 		nip->meta.uid = vap->va_uid_uuid;
-	else if (vap->va_uid != (uid_t)VNOVAL)
-		hammer2_guid_to_uuid(&nip->meta.uid, vap->va_uid);
-	else
-		hammer2_guid_to_uuid(&nip->meta.uid, xuid);
+	} else if (vap->va_uid != (uid_t)VNOVAL) {
+		uuid_t tmp;
+		hammer2_guid_to_uuid(&tmp, vap->va_uid);
+		nip->meta.uid = tmp;
+	} else {
+		uuid_t tmp;
+		hammer2_guid_to_uuid(&tmp, xuid);
+		nip->meta.uid = tmp;
+	}
 
-	if (vap->va_vaflags & VA_GID_UUID_VALID)
+	if (vap->va_vaflags & VA_GID_UUID_VALID) {
 		nip->meta.gid = vap->va_gid_uuid;
-	else if (vap->va_gid != (gid_t)VNOVAL)
-		hammer2_guid_to_uuid(&nip->meta.gid, vap->va_gid);
-	else
+	} else if (vap->va_gid != (gid_t)VNOVAL) {
+		uuid_t tmp;
+		hammer2_guid_to_uuid(&tmp, vap->va_gid);
+		nip->meta.gid = tmp;
+	} else {
 		nip->meta.gid = pip_gid;
+	}
 
 	/*
 	 * Regular files and softlinks allow a small amount of data to be

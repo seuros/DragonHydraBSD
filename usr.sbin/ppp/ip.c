@@ -211,9 +211,11 @@ FilterCheck(const unsigned char *packet, u_int32_t family,
 #ifndef NOINET6
   if (family == AF_INET6) {
     const struct ip6_hdr *pip6 = (const struct ip6_hdr *)packet;
+    struct in6_addr src6 = pip6->ip6_src;
+    struct in6_addr dst6 = pip6->ip6_dst;
 
-    ncpaddr_setip6(&srcaddr, &pip6->ip6_src);
-    ncpaddr_setip6(&dstaddr, &pip6->ip6_dst);
+    ncpaddr_setip6(&srcaddr, &src6);
+    ncpaddr_setip6(&dstaddr, &dst6);
     datalen = ntohs(pip6->ip6_plen);
     payload = packet + sizeof *pip6;
     cproto = pip6->ip6_nxt;
@@ -557,9 +559,11 @@ PacketCheck(struct bundle *bundle, u_int32_t family,
 #ifndef NOINET6
   if (family == AF_INET6) {
     const struct ip6_hdr *pip6 = (const struct ip6_hdr *)packet;
+    struct in6_addr src6 = pip6->ip6_src;
+    struct in6_addr dst6 = pip6->ip6_dst;
 
-    ncpaddr_setip6(&srcaddr, &pip6->ip6_src);
-    ncpaddr_setip6(&dstaddr, &pip6->ip6_dst);
+    ncpaddr_setip6(&srcaddr, &src6);
+    ncpaddr_setip6(&dstaddr, &dst6);
     datalen = ntohs(pip6->ip6_plen);
     payload = packet + sizeof *pip6;
     cproto = pip6->ip6_nxt;

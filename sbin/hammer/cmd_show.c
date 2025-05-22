@@ -788,7 +788,7 @@ print_record(hammer_btree_elm_t elm)
 			(uintmax_t)data->inode.atime);
 		if (data->inode.ext.symlink[0]) {
 			printf(" symlink=\"%s\"",
-				data->inode.ext.symlink);
+				(const char *)data->inode.ext.symlink);
 		}
 		break;
 	case HAMMER_RECTYPE_DIRENTRY:
@@ -817,17 +817,23 @@ print_record(hammer_btree_elm_t elm)
 		printf("pfs sync_beg_tid=%016jx sync_end_tid=%016jx\n",
 			(uintmax_t)data->pfsd.sync_beg_tid,
 			(uintmax_t)data->pfsd.sync_end_tid);
-		hammer_uuid_to_string(&data->pfsd.shared_uuid, &str1);
-		hammer_uuid_to_string(&data->pfsd.unique_uuid, &str2);
+		{
+			uuid_t tmp_shared = data->pfsd.shared_uuid;
+			uuid_t tmp_unique = data->pfsd.unique_uuid;
+			hammer_uuid_to_string(&tmp_shared, &str1);
+			hammer_uuid_to_string(&tmp_unique, &str2);
+		}
 		printf("%17s", "");
 		printf("    shared_uuid=%s\n", str1);
 		printf("%17s", "");
 		printf("    unique_uuid=%s\n", str2);
 		printf("%17s", "");
 		printf("    mirror_flags=%08x label=\"%s\"",
-			data->pfsd.mirror_flags, data->pfsd.label);
+			data->pfsd.mirror_flags,
+			(const char *)data->pfsd.label);
 		if (data->pfsd.snapshots[0])
-			printf(" snapshots=\"%s\"", data->pfsd.snapshots);
+			printf(" snapshots=\"%s\"",
+				(const char *)data->pfsd.snapshots);
 		free(str1);
 		free(str2);
 		break;

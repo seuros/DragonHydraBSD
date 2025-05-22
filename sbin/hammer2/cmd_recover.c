@@ -1060,9 +1060,13 @@ dump_tree(inode_entry_t *iscan, const char *dest, const char *remain,
 
 			if (lutimes(dest, tvs) < 0)
 				perror("futimes");
-			lchown(dest,
-			       hammer2_to_unix_xid(&inode->meta.uid),
-			       hammer2_to_unix_xid(&inode->meta.gid));
+			{
+				uuid_t tmp_uid = inode->meta.uid;
+				uuid_t tmp_gid = inode->meta.gid;
+				lchown(dest,
+				       hammer2_to_unix_xid(&tmp_uid),
+				       hammer2_to_unix_xid(&tmp_gid));
+			}
 
 			lchmod(dest, inode->meta.mode);
 			lchflags(dest, inode->meta.uflags);
@@ -1181,9 +1185,13 @@ dump_inum_file(inode_entry_t *iscan, hammer2_inode_data_t *inode,
 		ftruncate(wfd, inode->meta.size);
 		if (futimes(wfd, tvs) < 0)
 			perror("futimes");
-		fchown(wfd,
-		       hammer2_to_unix_xid(&inode->meta.uid),
-		       hammer2_to_unix_xid(&inode->meta.gid));
+		{
+			uuid_t tmp_uid = inode->meta.uid;
+			uuid_t tmp_gid = inode->meta.gid;
+			fchown(wfd,
+			       hammer2_to_unix_xid(&tmp_uid),
+			       hammer2_to_unix_xid(&tmp_gid));
+		}
 
 		fchmod(wfd, inode->meta.mode);
 		fchflags(wfd, inode->meta.uflags);
@@ -1199,9 +1207,13 @@ dump_inum_file(inode_entry_t *iscan, hammer2_inode_data_t *inode,
 		ftruncate(wfd, inode->meta.size);
 		if (futimes(wfd, tvs) < 0)
 			perror("futimes");
-		fchown(wfd,
-		       hammer2_to_unix_xid(&inode->meta.uid),
-		       hammer2_to_unix_xid(&inode->meta.gid));
+		{
+			uuid_t tmp_uid = inode->meta.uid;
+			uuid_t tmp_gid = inode->meta.gid;
+			fchown(wfd,
+			       hammer2_to_unix_xid(&tmp_uid),
+			       hammer2_to_unix_xid(&tmp_gid));
+		}
 
 		asprintf(&path2, "%s.corrupted", path1);
 		rename(path1, path2);

@@ -340,24 +340,24 @@ simple_hex(void *ptr, size_t length, const char *separator)
 }
 
 static const char *
-pdrive_location(struct mfi_evt_pd *pd)
+pdrive_location(struct mfi_evt_pd pd)
 {
 	static char buffer[16];
 
-	if (pd->enclosure_index == 0)
-		snprintf(buffer, sizeof(buffer), "%02d(s%d)", pd->device_id,
-		    pd->slot_number);
+	if (pd.enclosure_index == 0)
+		snprintf(buffer, sizeof(buffer), "%02d(s%d)", pd.device_id,
+		    pd.slot_number);
 	else
-		snprintf(buffer, sizeof(buffer), "%02d(e%d/s%d)", pd->device_id,
-		    pd->enclosure_index, pd->slot_number);
+		snprintf(buffer, sizeof(buffer), "%02d(e%d/s%d)", pd.device_id,
+		    pd.enclosure_index, pd.slot_number);
 	return (buffer);
 }
 
 static const char *
-volume_name(int fd, struct mfi_evt_ld *ld)
+volume_name(int fd, struct mfi_evt_ld ld)
 {
 
-	return (mfi_volume_name(fd, ld->target_id));
+	return (mfi_volume_name(fd, ld.target_id));
 }
 
 /* Ripped from sys/dev/mfi/mfi.c. */
@@ -374,7 +374,7 @@ mfi_decode_evt(int fd, struct mfi_evt_detail *detail, int verbose)
 	case MR_EVT_ARGS_CDB_SENSE:
 		if (verbose) {
 			printf("PD %s CDB ",
-			    pdrive_location(&detail->args.cdb_sense.pd)
+			    pdrive_location(detail->args.cdb_sense.pd)
 			    );
 			simple_hex(detail->args.cdb_sense.cdb,
 			    detail->args.cdb_sense.cdb_len, ":");
@@ -385,10 +385,10 @@ mfi_decode_evt(int fd, struct mfi_evt_detail *detail, int verbose)
 		}
 		break;
 	case MR_EVT_ARGS_LD:
-		printf("VOL %s event: ", volume_name(fd, &detail->args.ld));
+		printf("VOL %s event: ", volume_name(fd, detail->args.ld));
 		break;
 	case MR_EVT_ARGS_LD_COUNT:
-		printf("VOL %s", volume_name(fd, &detail->args.ld_count.ld));
+		printf("VOL %s", volume_name(fd, detail->args.ld_count.ld));
 		if (verbose) {
 			printf(" count %lld: ",
 			    (long long)detail->args.ld_count.count);
@@ -396,7 +396,7 @@ mfi_decode_evt(int fd, struct mfi_evt_detail *detail, int verbose)
 		printf(": ");
 		break;
 	case MR_EVT_ARGS_LD_LBA:
-		printf("VOL %s", volume_name(fd, &detail->args.ld_count.ld));
+		printf("VOL %s", volume_name(fd, detail->args.ld_count.ld));
 		if (verbose) {
 			printf(" lba %lld",
 			    (long long)detail->args.ld_lba.lba);
@@ -404,7 +404,7 @@ mfi_decode_evt(int fd, struct mfi_evt_detail *detail, int verbose)
 		printf(": ");
 		break;
 	case MR_EVT_ARGS_LD_OWNER:
-		printf("VOL %s", volume_name(fd, &detail->args.ld_count.ld));
+		printf("VOL %s", volume_name(fd, detail->args.ld_count.ld));
 		if (verbose) {
 			printf(" owner changed: prior %d, new %d",
 			    detail->args.ld_owner.pre_owner,
@@ -413,17 +413,17 @@ mfi_decode_evt(int fd, struct mfi_evt_detail *detail, int verbose)
 		printf(": ");
 		break;
 	case MR_EVT_ARGS_LD_LBA_PD_LBA:
-		printf("VOL %s", volume_name(fd, &detail->args.ld_count.ld));
+		printf("VOL %s", volume_name(fd, detail->args.ld_count.ld));
 		if (verbose) {
 			printf(" lba %lld, physical drive PD %s lba %lld",
 			    (long long)detail->args.ld_lba_pd_lba.ld_lba,
-			    pdrive_location(&detail->args.ld_lba_pd_lba.pd),
+			    pdrive_location(detail->args.ld_lba_pd_lba.pd),
 			    (long long)detail->args.ld_lba_pd_lba.pd_lba);
 		}
 		printf(": ");
 		break;
 	case MR_EVT_ARGS_LD_PROG:
-		printf("VOL %s", volume_name(fd, &detail->args.ld_prog.ld));
+		printf("VOL %s", volume_name(fd, detail->args.ld_prog.ld));
 		if (verbose) {
 			printf(" progress %d%% in %ds",
 			    detail->args.ld_prog.prog.progress/655,
@@ -432,7 +432,7 @@ mfi_decode_evt(int fd, struct mfi_evt_detail *detail, int verbose)
 		printf(": ");
 		break;
 	case MR_EVT_ARGS_LD_STATE:
-		printf("VOL %s", volume_name(fd, &detail->args.ld_prog.ld));
+		printf("VOL %s", volume_name(fd, detail->args.ld_prog.ld));
 		if (verbose) {
 			printf(" state prior %s new %s",
 			    mfi_ldstate(detail->args.ld_state.prev_state),
@@ -441,7 +441,7 @@ mfi_decode_evt(int fd, struct mfi_evt_detail *detail, int verbose)
 		printf(": ");
 		break;
 	case MR_EVT_ARGS_LD_STRIP:
-		printf("VOL %s", volume_name(fd, &detail->args.ld_strip.ld));
+		printf("VOL %s", volume_name(fd, detail->args.ld_strip.ld));
 		if (verbose) {
 			printf(" strip %lld",
 			    (long long)detail->args.ld_strip.strip);
@@ -451,35 +451,35 @@ mfi_decode_evt(int fd, struct mfi_evt_detail *detail, int verbose)
 	case MR_EVT_ARGS_PD:
 		if (verbose) {
 			printf("PD %s event: ",
-			    pdrive_location(&detail->args.pd));
+			    pdrive_location(detail->args.pd));
 		}
 		break;
 	case MR_EVT_ARGS_PD_ERR:
 		if (verbose) {
 			printf("PD %s err %d: ",
-			    pdrive_location(&detail->args.pd_err.pd),
+			    pdrive_location(detail->args.pd_err.pd),
 			    detail->args.pd_err.err);
 		}
 		break;
 	case MR_EVT_ARGS_PD_LBA:
 		if (verbose) {
 			printf("PD %s lba %lld: ",
-			    pdrive_location(&detail->args.pd_lba.pd),
+			    pdrive_location(detail->args.pd_lba.pd),
 			    (long long)detail->args.pd_lba.lba);
 		}
 		break;
 	case MR_EVT_ARGS_PD_LBA_LD:
 		if (verbose) {
 			printf("PD %s lba %lld VOL %s: ",
-			    pdrive_location(&detail->args.pd_lba_ld.pd),
+			    pdrive_location(detail->args.pd_lba_ld.pd),
 			    (long long)detail->args.pd_lba.lba,
-			    volume_name(fd, &detail->args.pd_lba_ld.ld));
+			    volume_name(fd, detail->args.pd_lba_ld.ld));
 		}
 		break;
 	case MR_EVT_ARGS_PD_PROG:
 		if (verbose) {
 			printf("PD %s progress %d%% seconds %ds: ",
-			    pdrive_location(&detail->args.pd_prog.pd),
+			    pdrive_location(detail->args.pd_prog.pd),
 			    detail->args.pd_prog.prog.progress/655,
 			    detail->args.pd_prog.prog.elapsed_seconds);
 		}
@@ -487,7 +487,7 @@ mfi_decode_evt(int fd, struct mfi_evt_detail *detail, int verbose)
 	case MR_EVT_ARGS_PD_STATE:
 		if (verbose) {
 			printf("PD %s state prior %s new %s: ",
-			    pdrive_location(&detail->args.pd_prog.pd),
+			    pdrive_location(detail->args.pd_prog.pd),
 			    mfi_pdstate(detail->args.pd_state.prev_state),
 			    mfi_pdstate(detail->args.pd_state.new_state));
 		}

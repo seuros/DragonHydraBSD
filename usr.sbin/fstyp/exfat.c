@@ -300,7 +300,7 @@ exfat_find_label(FILE *fp, const struct exfat_vbr *ev, unsigned BPS,
 				break;
 			case XDE_TYPE_VOL_LABEL: {
 				struct exfat_de_label *lde = (void*)it;
-				convert_label(lde->xdel_vol_lbl,
+				convert_label((const uint16_t *)(const void *)lde->xdel_vol_lbl,
 				    lde->xdel_char_cnt, label_out, label_sz);
 				free(declust);
 				return;
@@ -326,7 +326,7 @@ fstyp_exfat(FILE *fp, char *label, size_t size, const char *devpath)
 	error = 1;
 	cksect = NULL;
 	ev = (struct exfat_vbr *)read_buf(fp, 0, 512);
-	if (ev == NULL || strncmp(ev->ev_fsname, "EXFAT   ", 8) != 0)
+	if (ev == NULL || strncmp((const char *)ev->ev_fsname, "EXFAT   ", 8) != 0)
 		goto out;
 
 	if (ev->ev_log_bytes_per_sect < 9 || ev->ev_log_bytes_per_sect > 12) {

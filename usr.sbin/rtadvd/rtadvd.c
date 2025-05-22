@@ -1230,6 +1230,7 @@ prefix_check(struct nd_opt_prefix_info *pinfo,
 	struct ifinfo *ifi;
 	uint32_t preferred_time, valid_time;
 	struct prefix *pfx;
+	struct in6_addr pi_prefix;
 	int inconsistent = 0;
 	char ntopbuf[INET6_ADDRSTRLEN];
 	char prefixbuf[INET6_ADDRSTRLEN];
@@ -1240,26 +1241,30 @@ prefix_check(struct nd_opt_prefix_info *pinfo,
 		return (0);
 #endif
 	ifi = rai->rai_ifinfo;
+
+	/* Copy packed prefix to aligned local for safe address-of use */
+	pi_prefix = pinfo->nd_opt_pi_prefix;
+
 	/*
 	 * log if the adveritsed prefix has link-local scope(sanity check?)
 	 */
-	if (IN6_IS_ADDR_LINKLOCAL(&pinfo->nd_opt_pi_prefix))
+	if (IN6_IS_ADDR_LINKLOCAL(&pi_prefix))
 		syslog(LOG_INFO,
 		    "<%s> link-local prefix %s/%d is advertised "
 		    "from %s on %s",
 		    __func__,
-		    inet_ntop(AF_INET6, &pinfo->nd_opt_pi_prefix, prefixbuf,
+		    inet_ntop(AF_INET6, &pi_prefix, prefixbuf,
 			sizeof(prefixbuf)),
 		    pinfo->nd_opt_pi_prefix_len,
 		    inet_ntop(AF_INET6, &from->sin6_addr, ntopbuf,
 			sizeof(ntopbuf)), ifi->ifi_ifname);
 
-	if ((pfx = find_prefix(rai, &pinfo->nd_opt_pi_prefix,
+	if ((pfx = find_prefix(rai, &pi_prefix,
 		pinfo->nd_opt_pi_prefix_len)) == NULL) {
 		syslog(LOG_INFO,
 		    "<%s> prefix %s/%d from %s on %s is not in our list",
 		    __func__,
-		    inet_ntop(AF_INET6, &pinfo->nd_opt_pi_prefix, prefixbuf,
+		    inet_ntop(AF_INET6, &pi_prefix, prefixbuf,
 			sizeof(prefixbuf)),
 		    pinfo->nd_opt_pi_prefix_len,
 		    inet_ntop(AF_INET6, &from->sin6_addr, ntopbuf,
@@ -1286,7 +1291,7 @@ prefix_check(struct nd_opt_prefix_info *pinfo,
 			    " (decr. in real time) inconsistent on %s:"
 			    " %" PRIu32 " from %s, %" PRIu32 " from us",
 			    __func__,
-			    inet_ntop(AF_INET6, &pinfo->nd_opt_pi_prefix, prefixbuf,
+			    inet_ntop(AF_INET6, &pi_prefix, prefixbuf,
 				sizeof(prefixbuf)),
 			    pinfo->nd_opt_pi_prefix_len,
 			    ifi->ifi_ifname, preferred_time,
@@ -1300,7 +1305,7 @@ prefix_check(struct nd_opt_prefix_info *pinfo,
 		    " inconsistent on %s:"
 		    " %d from %s, %d from us",
 		    __func__,
-		    inet_ntop(AF_INET6, &pinfo->nd_opt_pi_prefix, prefixbuf,
+		    inet_ntop(AF_INET6, &pi_prefix, prefixbuf,
 			sizeof(prefixbuf)),
 		    pinfo->nd_opt_pi_prefix_len,
 		    ifi->ifi_ifname, preferred_time,
@@ -1319,7 +1324,7 @@ prefix_check(struct nd_opt_prefix_info *pinfo,
 			    " (decr. in real time) inconsistent on %s:"
 			    " %d from %s, %" PRIu32 " from us",
 			    __func__,
-			    inet_ntop(AF_INET6, &pinfo->nd_opt_pi_prefix, prefixbuf,
+			    inet_ntop(AF_INET6, &pi_prefix, prefixbuf,
 				sizeof(prefixbuf)),
 			    pinfo->nd_opt_pi_prefix_len,
 			    ifi->ifi_ifname, preferred_time,
@@ -1333,7 +1338,7 @@ prefix_check(struct nd_opt_prefix_info *pinfo,
 		    " inconsistent on %s:"
 		    " %d from %s, %d from us",
 		    __func__,
-		    inet_ntop(AF_INET6, &pinfo->nd_opt_pi_prefix, prefixbuf,
+		    inet_ntop(AF_INET6, &pi_prefix, prefixbuf,
 			sizeof(prefixbuf)),
 		    pinfo->nd_opt_pi_prefix_len,
 		    ifi->ifi_ifname, valid_time,

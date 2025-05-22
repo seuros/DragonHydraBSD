@@ -100,18 +100,21 @@ test_voldata(FILE *fp)
 
 		if (count == 0) {
 			count = voldata->nvolumes;
-			memcpy(&fsid, &voldata->fsid, sizeof(fsid));
-			memcpy(&fstype, &voldata->fstype, sizeof(fstype));
+			memcpy(&fsid, (const void *)&voldata->fsid, sizeof(fsid));
+			memcpy(&fstype, (const void *)&voldata->fstype, sizeof(fstype));
 		} else {
+			uuid_t tmp_fsid, tmp_fstype;
 			if (voldata->nvolumes != count) {
 				free(voldata);
 				return (1);
 			}
-			if (!uuid_equal(&fsid, &voldata->fsid, NULL)) {
+			tmp_fsid = voldata->fsid;
+			if (!uuid_equal(&fsid, &tmp_fsid, NULL)) {
 				free(voldata);
 				return (1);
 			}
-			if (!uuid_equal(&fstype, &voldata->fstype, NULL)) {
+			tmp_fstype = voldata->fstype;
+			if (!uuid_equal(&fstype, &tmp_fstype, NULL)) {
 				free(voldata);
 				return (1);
 			}
@@ -358,7 +361,7 @@ read_label(FILE *fp, char *label, size_t size, const char *devpath)
 			strlcpy(label, pfs, size);
 	} else {
 		memset(label, 0, size);
-		memcpy(label, media->ipdata.filename,
+		memcpy(label, (const void *)media->ipdata.filename,
 		    sizeof(media->ipdata.filename));
 		if (devname) {
 			strlcat(label, "_", size);

@@ -821,8 +821,10 @@ again:
 	/*
 	 * Create slave PFS if it doesn't yet exist
 	 */
-	if (lstat(filesystem, &st) != 0)
-		create_pfs(filesystem, &mrec->pfs.pfsd.shared_uuid);
+	if (lstat(filesystem, &st) != 0) {
+		uuid_t tmp_uuid = mrec->pfs.pfsd.shared_uuid;
+		create_pfs(filesystem, &tmp_uuid);
+	}
 	free(mrec);
 	mrec = NULL;
 
@@ -1581,10 +1583,13 @@ validate_mrec_header(int fd, int fdin, int is_target, int pfs_id,
 	/*
 	 * Whew.  Ok, is the read PFS info compatible with the target?
 	 */
-	if (hammer_uuid_compare(&mrec->pfs.pfsd.shared_uuid, &pfsd.shared_uuid)) {
-		errx(1, "mirror-write: source and target have "
-			"different shared-uuid's!");
-		/* not reached */
+	{
+		uuid_t tmp_shared = mrec->pfs.pfsd.shared_uuid;
+		if (hammer_uuid_compare(&tmp_shared, &pfsd.shared_uuid)) {
+			errx(1, "mirror-write: source and target have "
+				"different shared-uuid's!");
+			/* not reached */
+		}
 	}
 	if (is_target && hammer_is_pfs_master(&pfsd)) {
 		errx(1, "mirror-write: target must be in slave mode");

@@ -629,7 +629,7 @@ show_volhdr(hammer2_volume_data_t *voldata, int bi)
 	uuid = voldata->fstype;
 	hammer2_uuid_to_str(&uuid, &str);
 	printf("    fstype         %s\n", str);
-	uuid_addr_lookup(&voldata->fstype, &name, &status);
+	uuid_addr_lookup(&uuid, &name, &status);
 	if (name == NULL)
 		name = strdup("?");
 	printf("                   (%s)\n", name);
@@ -1037,7 +1037,8 @@ show_bref(hammer2_volume_data_t *voldata, int tab, int bi,
 		if (namelen > HAMMER2_INODE_MAXNAME)
 			namelen = 0;
 		tabprintf(tab, "filename \"%*.*s\"\n",
-			  namelen, namelen, media.ipdata.filename);
+			  namelen, namelen,
+			  (const char *)media.ipdata.filename);
 		tabprintf(tab, "version  %d\n", media.ipdata.meta.version);
 		if ((media.ipdata.meta.op_flags & HAMMER2_OPFLAG_PFSROOT) ||
 		    media.ipdata.meta.pfs_type == HAMMER2_PFSTYPE_SUPROOT) {

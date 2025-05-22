@@ -427,7 +427,7 @@ hammer2_pfsalloc(hammer2_chain_t *chain,
 			if (force_local != pmp->force_local)
 				continue;
 			if (force_local == NULL &&
-			    bcmp(&pmp->pfs_clid, &ripdata->meta.pfs_clid,
+			    bcmp(&pmp->pfs_clid, (const void *)&ripdata->meta.pfs_clid,
 				 sizeof(pmp->pfs_clid)) == 0) {
 				break;
 			} else if (force_local && pmp->pfs_names[0] &&

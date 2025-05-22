@@ -371,7 +371,7 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 	}
 
 	printf("You have requested that PFS#%d (%s) be destroyed\n",
-		pfs.pfs_id, pfs.ondisk->label);
+		pfs.pfs_id, (const char *)pfs.ondisk->label);
 	printf("This will irrevocably destroy all data on this PFS!!!!!\n");
 	printf("Do you really want to do this? [y/n] ");
 	fflush(stdout);
@@ -390,7 +390,7 @@ hammer_cmd_pseudofs_destroy(char **av, int ac)
 		}
 	}
 
-	printf("Destroying PFS#%d (%s)", pfs.pfs_id, pfs.ondisk->label);
+	printf("Destroying PFS#%d (%s)", pfs.pfs_id, (const char *)pfs.ondisk->label);
 	if (DebugOpt) {
 		printf("\n");
 	} else {
@@ -551,15 +551,21 @@ dump_pfsd(hammer_pseudofs_data_t pfsd, int fd)
 
 	printf("    sync-beg-tid=0x%016jx\n", (uintmax_t)pfsd->sync_beg_tid);
 	printf("    sync-end-tid=0x%016jx\n", (uintmax_t)pfsd->sync_end_tid);
-	hammer_uuid_to_string(&pfsd->shared_uuid, &str);
+	{
+		uuid_t tmp_shared = pfsd->shared_uuid;
+		hammer_uuid_to_string(&tmp_shared, &str);
+	}
 	printf("    shared-uuid=%s\n", str);
 	free(str);
-	hammer_uuid_to_string(&pfsd->unique_uuid, &str);
+	{
+		uuid_t tmp_unique = pfsd->unique_uuid;
+		hammer_uuid_to_string(&tmp_unique, &str);
+	}
 	printf("    unique-uuid=%s\n", str);
 	free(str);
-	printf("    label=\"%s\"\n", pfsd->label);
+	printf("    label=\"%s\"\n", (const char *)pfsd->label);
 	if (pfsd->snapshots[0])
-		printf("    snapshots=\"%s\"\n", pfsd->snapshots);
+		printf("    snapshots=\"%s\"\n", (const char *)pfsd->snapshots);
 	if (pfsd->prune_min < (60 * 60 * 24)) {
 		printf("    prune-min=%02d:%02d:%02d\n",
 			pfsd->prune_min / 60 / 60 % 24,
@@ -632,17 +638,21 @@ parse_pfsd_options(char **av, int ac, hammer_pseudofs_data_t pfsd)
 		} else if (strcmp(cmd, "sync-end-tid") == 0) {
 			pfsd->sync_end_tid = strtoull(ptr, NULL, 16);
 		} else if (strcmp(cmd, "shared-uuid") == 0) {
-			if (hammer_uuid_from_string(ptr, &pfsd->shared_uuid)) {
+			uuid_t tmp;
+			if (hammer_uuid_from_string(ptr, &tmp)) {
 				errx(1, "option %s: error parsing uuid %s",
 					cmd, ptr);
 				/* not reached */
 			}
+			pfsd->shared_uuid = tmp;
 		} else if (strcmp(cmd, "unique-uuid") == 0) {
-			if (hammer_uuid_from_string(ptr, &pfsd->unique_uuid)) {
+			uuid_t tmp;
+			if (hammer_uuid_from_string(ptr, &tmp)) {
 				errx(1, "option %s: error parsing uuid %s",
 					cmd, ptr);
 				/* not reached */
 			}
+			pfsd->unique_uuid = tmp;
 		} else if (strcmp(cmd, "label") == 0) {
 			len = strlen(ptr);
 			if (ptr[0] == '"' && ptr[len-1] == '"') {

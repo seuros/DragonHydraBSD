@@ -496,7 +496,7 @@ hammer2_ioctl_pfs_get(hammer2_inode_t *ip, void *data)
 		pfs->pfs_clid = ripdata->meta.pfs_clid;
 		pfs->pfs_fsid = ripdata->meta.pfs_fsid;
 		KKASSERT(ripdata->meta.name_len < sizeof(pfs->name));
-		bcopy(ripdata->filename, pfs->name, ripdata->meta.name_len);
+		bcopy((const void *)ripdata->filename, pfs->name, ripdata->meta.name_len);
 		pfs->name[ripdata->meta.name_len] = 0;
 		ripdata = NULL;	/* safety */
 
@@ -903,7 +903,11 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		nip->meta.pfs_lsnap_tid = mtid;
 		nchain->bref.embed.stats = chain->bref.embed.stats;
 
-		uuid_create(&nip->meta.pfs_fsid, NULL);
+		{
+			uuid_t tmp;
+			uuid_create(&tmp, NULL);
+			nip->meta.pfs_fsid = tmp;
+		}
 
 #if 0
 		/*
@@ -916,7 +920,11 @@ hammer2_ioctl_pfs_snapshot(hammer2_inode_t *ip, void *data)
 		else
 			uuid_create(&nip->meta.pfs_clid, NULL);
 #endif
-		uuid_create(&nip->meta.pfs_clid, NULL);
+		{
+			uuid_t tmp;
+			uuid_create(&tmp, NULL);
+			nip->meta.pfs_clid = tmp;
+		}
 		nchain->bref.flags |= HAMMER2_BREF_FLAG_PFSROOT;
 
 		/* XXX hack blockset copy */

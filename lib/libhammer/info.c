@@ -99,8 +99,11 @@ libhammer_get_fsinfo(const char *path)
 			pip->mirror_flags = pfs_od->mirror_flags;
 			pip->beg_tid = pfs_od->sync_beg_tid;
 			pip->end_tid = pfs_od->sync_end_tid;
-			pip->mountedon =
-			    libhammer_find_pfs_mount(&pfs_od->unique_uuid);
+			{
+				uuid_t tmp_uuid = pfs_od->unique_uuid;
+				pip->mountedon =
+				    libhammer_find_pfs_mount(&tmp_uuid);
+			}
 			if (fip->version < 3) {
 				libhammer_compat_old_snapcount(pip);
 			} else {

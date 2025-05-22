@@ -211,8 +211,9 @@ do_cleanup(const char *path)
 	 * mounts might alias the same PFS.
 	 */
 	for (didpfs = FirstPFS; didpfs; didpfs = didpfs->next) {
+		uuid_t tmp_uuid = mrec_tmp.pfs.pfsd.unique_uuid;
 		if (hammer_uuid_compare(&didpfs->uuid,
-			&mrec_tmp.pfs.pfsd.unique_uuid) == 0) {
+			&tmp_uuid) == 0) {
 			printf(" PFS#%d already handled\n", pfs.pfs_id);
 			close(fd);
 			return;
@@ -230,7 +231,7 @@ do_cleanup(const char *path)
 	 * we flag it and will not migrate it later.
 	 */
 	if (mrec_tmp.pfs.pfsd.snapshots[0] == '/') {
-		asprintf(&snapshots_path, "%s", mrec_tmp.pfs.pfsd.snapshots);
+		asprintf(&snapshots_path, "%s", (const char *)mrec_tmp.pfs.pfsd.snapshots);
 		snapshots_from_pfs = 1;
 	} else if (mrec_tmp.pfs.pfsd.snapshots[0]) {
 		printf(" WARNING: pfs-slave's snapshots dir is not absolute\n");

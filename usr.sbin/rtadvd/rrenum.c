@@ -206,8 +206,11 @@ do_use_prefix(int len, struct rr_pco_match *rpm,
 			    strerror(errno));
 
 		/* very adhoc: should be rewritten */
+		{
+		struct in6_addr rpm_pfx = rpm->rpm_prefix;
+		struct in6_addr rpu_pfx = rpu->rpu_prefix;
 		if (rpm->rpm_code == RPM_PCO_CHANGE &&
-		    IN6_ARE_ADDR_EQUAL(&rpm->rpm_prefix, &rpu->rpu_prefix) &&
+		    IN6_ARE_ADDR_EQUAL(&rpm_pfx, &rpu_pfx) &&
 		    rpm->rpm_matchlen == rpu->rpu_uselen &&
 		    rpu->rpu_uselen == rpu->rpu_keeplen) {
 			ifi = if_indextoifinfo(ifindex);
@@ -219,7 +222,7 @@ do_use_prefix(int len, struct rr_pco_match *rpm,
 				struct timespec now;
 
 				if (prefix_match(&pfx->pfx_prefix,
-				    pfx->pfx_prefixlen, &rpm->rpm_prefix,
+				    pfx->pfx_prefixlen, &rpm_pfx,
 				    rpm->rpm_matchlen)) {
 					/* change parameters */
 					pfx->pfx_validlifetime =
@@ -243,6 +246,7 @@ do_use_prefix(int len, struct rr_pco_match *rpm,
 					} else
 						pfx->pfx_pltimeexpire = 0;
 				}
+			}
 			}
 		}
 	}
