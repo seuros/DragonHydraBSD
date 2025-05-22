@@ -261,7 +261,11 @@ format_timestamp(uint32_t timestamp)
 		return (buffer);
 	}
 	t = base + timestamp;
+	/* %+ is a valid BSD strftime extension; suppress GCC format warning */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
 	strftime(buffer, sizeof(buffer), "%+", localtime(&t));
+#pragma GCC diagnostic pop
 	return (buffer);
 }
 

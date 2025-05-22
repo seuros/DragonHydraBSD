@@ -635,13 +635,40 @@ struct {								\
 	QMD_TRACE_ELEM(&(elm)->field);					\
 } while (0)
 
+/*
+ * GCC 15 -Warray-bounds false positive: the TAILQ_LAST/TAILQ_PREV trick
+ * casts a member pointer back to its containing struct, which GCC
+ * misinterprets as an out-of-bounds access on a zero-length object.
+ */
+#if defined(__GNUC__) && __GNUC__ >= 15
+#define	TAILQ_LAST(head, headname) __extension__ ({			\
+	_Pragma("GCC diagnostic push")					\
+	_Pragma("GCC diagnostic ignored \"-Warray-bounds\"")		\
+	__typeof__((head)->tqh_first) __tqlast =			\
+	    (*(((struct headname *)((head)->tqh_last))->tqh_last));	\
+	_Pragma("GCC diagnostic pop")					\
+	__tqlast;							\
+})
+#else
 #define	TAILQ_LAST(head, headname)					\
 	(*(((struct headname *)((head)->tqh_last))->tqh_last))
+#endif
 
 #define	TAILQ_NEXT(elm, field) ((elm)->field.tqe_next)
 
+#if defined(__GNUC__) && __GNUC__ >= 15
+#define	TAILQ_PREV(elm, headname, field) __extension__ ({		\
+	_Pragma("GCC diagnostic push")					\
+	_Pragma("GCC diagnostic ignored \"-Warray-bounds\"")		\
+	__typeof__((elm)->field.tqe_next) __tqprev =			\
+	    (*(((struct headname *)((elm)->field.tqe_prev))->tqh_last));\
+	_Pragma("GCC diagnostic pop")					\
+	__tqprev;							\
+})
+#else
 #define	TAILQ_PREV(elm, headname, field)				\
 	(*(((struct headname *)((elm)->field.tqe_prev))->tqh_last))
+#endif
 
 #define	TAILQ_REMOVE(head, elm, field) do {				\
 	QMD_SAVELINK(oldnext, (elm)->field.tqe_next);			\

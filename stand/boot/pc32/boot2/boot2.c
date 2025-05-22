@@ -77,6 +77,15 @@
 #include "lib.h"
 #include "../bootasm.h"
 
+/*
+ * GCC 15 -Warray-bounds false positive: boot2 uses PTOV() to access
+ * physical memory via fixed addresses cast to pointers.  GCC sees these
+ * as subscripts into a zero-length object.
+ */
+#if __GNUC__ >= 15
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
+
 #define SECOND		18	/* Circa that many ticks in a second. */
 
 #define RBX_ASKNAME	0x0	/* -a */
