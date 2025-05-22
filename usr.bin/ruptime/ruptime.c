@@ -133,8 +133,12 @@ main(int argc, char *argv[])
 			hsp = hs + nhosts;
 		}
 
-		if ((hsp->hs_wd = malloc((size_t)WHDRSIZE)) == NULL)
-			err(1, NULL);
+		{
+			void *mem = malloc((size_t)WHDRSIZE);
+			if (mem == NULL)
+				err(1, NULL);
+			hsp->hs_wd = mem;
+		}
 		memmove(hsp->hs_wd, buf, (size_t)WHDRSIZE);
 
 		for (wd = (struct whod *)buf, i = 0; i < 2; ++i)

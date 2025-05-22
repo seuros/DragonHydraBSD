@@ -113,8 +113,10 @@ read_write_quad(int fd, struct fw_eui64 eui, u_int32_t addr_lo, int readmode, u_
 {
         struct fw_asyreq *asyreq;
 	u_int32_t *qld, res;
+	void *mem;
 
-        asyreq = (struct fw_asyreq *)malloc(sizeof(struct fw_asyreq_t) + 16);
+        mem = malloc(sizeof(struct fw_asyreq_t) + 16);
+	asyreq = mem;
 	asyreq->req.len = 16;
 #if 0
 	asyreq->req.type = FWASREQNODE;
@@ -151,8 +153,10 @@ static void
 send_phy_config(int fd, int root_node, int gap_count)
 {
         struct fw_asyreq *asyreq;
+	void *mem;
 
-	asyreq = (struct fw_asyreq *)malloc(sizeof(struct fw_asyreq_t) + 12);
+	mem = malloc(sizeof(struct fw_asyreq_t) + 12);
+	asyreq = mem;
 	asyreq->req.len = 12;
 	asyreq->req.type = FWASREQNODE;
 	asyreq->pkt.mode.ld[0] = 0;
@@ -176,8 +180,10 @@ static void
 send_link_on(int fd, int node)
 {
         struct fw_asyreq *asyreq;
+	void *mem;
 
-	asyreq = (struct fw_asyreq *)malloc(sizeof(struct fw_asyreq_t) + 12);
+	mem = malloc(sizeof(struct fw_asyreq_t) + 12);
+	asyreq = mem;
 	asyreq->req.len = 12;
 	asyreq->req.type = FWASREQNODE;
 	asyreq->pkt.mode.ld[1] = 0;
@@ -195,8 +201,10 @@ static void
 reset_start(int fd, int node)
 {
         struct fw_asyreq *asyreq;
+	void *mem;
 
-	asyreq = (struct fw_asyreq *)malloc(sizeof(struct fw_asyreq_t) + 16);
+	mem = malloc(sizeof(struct fw_asyreq_t) + 16);
+	asyreq = mem;
 	asyreq->req.len = 16;
 	asyreq->req.type = FWASREQNODE;
 	asyreq->pkt.mode.wreqq.dst = FWLOCALBUS | (node & 0x3f);
