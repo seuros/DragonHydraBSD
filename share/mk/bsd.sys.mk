@@ -20,7 +20,7 @@ CFLAGS		+= -std=iso9899:1990
 CFLAGS		+= -std=iso9899:199409
 .elif ${CSTD} == "c99"
 CFLAGS		+= -std=iso9899:1999
-.else
+.elif ${CSTD} != ""
 CFLAGS		+= -std=${CSTD}
 .endif
 
