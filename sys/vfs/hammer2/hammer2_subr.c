@@ -313,35 +313,40 @@ hammer2_update_time(uint64_t *timep)
 	*timep = (unsigned long)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
 }
 
+static long *
+hammer2_iod_counter(int btype, long *file, long *meta, long *indr,
+		    long *fmap, long *volu)
+{
+	switch(btype) {
+	case HAMMER2_BREF_TYPE_DATA:
+		return file;
+	case HAMMER2_BREF_TYPE_DIRENT:
+	case HAMMER2_BREF_TYPE_INODE:
+		return meta;
+	case HAMMER2_BREF_TYPE_INDIRECT:
+		return indr;
+	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
+	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
+		return fmap;
+	case HAMMER2_BREF_TYPE_FREEMAP:
+	case HAMMER2_BREF_TYPE_VOLUME:
+		return volu;
+	default:
+		return NULL;
+	}
+}
+
 void
 hammer2_adjreadcounter(int btype, size_t bytes)
 {
 	long *counterp;
 
-	switch(btype) {
-	case HAMMER2_BREF_TYPE_DATA:
-		counterp = &hammer2_iod_file_read;
-		break;
-	case HAMMER2_BREF_TYPE_DIRENT:
-	case HAMMER2_BREF_TYPE_INODE:
-		counterp = &hammer2_iod_meta_read;
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		counterp = &hammer2_iod_indr_read;
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		counterp = &hammer2_iod_fmap_read;
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP:
-	case HAMMER2_BREF_TYPE_VOLUME:
-		counterp = &hammer2_iod_volu_read;
-		break;
-	case HAMMER2_BREF_TYPE_EMPTY:
-	default:
-		return;
-	}
-	*counterp += bytes;
+	counterp = hammer2_iod_counter(btype,
+		&hammer2_iod_file_read, &hammer2_iod_meta_read,
+		&hammer2_iod_indr_read, &hammer2_iod_fmap_read,
+		&hammer2_iod_volu_read);
+	if (counterp)
+		*counterp += bytes;
 }
 
 void
@@ -349,30 +354,12 @@ hammer2_adjwritecounter(int btype, size_t bytes)
 {
 	long *counterp;
 
-	switch(btype) {
-	case HAMMER2_BREF_TYPE_DATA:
-		counterp = &hammer2_iod_file_write;
-		break;
-	case HAMMER2_BREF_TYPE_DIRENT:
-	case HAMMER2_BREF_TYPE_INODE:
-		counterp = &hammer2_iod_meta_write;
-		break;
-	case HAMMER2_BREF_TYPE_INDIRECT:
-		counterp = &hammer2_iod_indr_write;
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP_NODE:
-	case HAMMER2_BREF_TYPE_FREEMAP_LEAF:
-		counterp = &hammer2_iod_fmap_write;
-		break;
-	case HAMMER2_BREF_TYPE_FREEMAP:
-	case HAMMER2_BREF_TYPE_VOLUME:
-		counterp = &hammer2_iod_volu_write;
-		break;
-	case HAMMER2_BREF_TYPE_EMPTY:
-	default:
-		return;
-	}
-	*counterp += bytes;
+	counterp = hammer2_iod_counter(btype,
+		&hammer2_iod_file_write, &hammer2_iod_meta_write,
+		&hammer2_iod_indr_write, &hammer2_iod_fmap_write,
+		&hammer2_iod_volu_write);
+	if (counterp)
+		*counterp += bytes;
 }
 
 /*
