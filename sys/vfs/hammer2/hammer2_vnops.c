@@ -1436,25 +1436,28 @@ hammer2_vop_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 	return error;
 }
 
+/*
+ * dip must be locked before nip to avoid deadlock.
+ */
 static
 int
-hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
+hammer2_nmake(struct vnode *dvp, struct namecache *ncp,
+	      struct vnode **vpp, struct ucred *cred,
+	      struct vattr *vap, int knote_flags)
 {
 	hammer2_inode_t *dip;
 	hammer2_inode_t *nip;
-	struct namecache *ncp;
 	const char *name;
 	size_t name_len;
 	hammer2_tid_t inum;
 	int error;
 
-	dip = VTOI(ap->a_dvp);
+	dip = VTOI(dvp);
 	if (dip->pmp->ronly || (dip->pmp->flags & HAMMER2_PMPF_EMERG))
 		return (EROFS);
-	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
+	if (hammer2_vfs_enospace(dip, 0, cred) > 1)
 		return (ENOSPC);
 
-	ncp = ap->a_nch->ncp;
 	name = ncp->nc_name;
 	name_len = ncp->nc_nlen;
 
@@ -1462,21 +1465,13 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 
 	inum = hammer2_trans_newinum(dip->pmp);
 
-	/*
-	 * Create the directory as an inode and then create the directory
-	 * entry.
-	 *
-	 * dip must be locked before nip to avoid deadlock.
-	 */
 	hammer2_inode_lock(dip, 0);
-	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
-					  inum, &error);
+	nip = hammer2_inode_create_normal(dip, vap, cred, inum, &error);
 	if (error) {
 		error = hammer2_error_to_errno(error);
 	} else {
 		error = hammer2_dirent_create(dip, name, name_len,
 					      nip->meta.inum, nip->meta.type);
-		/* returns UNIX error code */
 	}
 	if (error) {
 		if (nip) {
@@ -1484,14 +1479,14 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 			hammer2_inode_unlock(nip);
 			nip = NULL;
 		}
-		*ap->a_vpp = NULL;
+		*vpp = NULL;
 	} else {
 		/*
 		 * inode_depend() must occur before the igetv() because
 		 * the igetv() can temporarily release the inode lock.
 		 */
 		hammer2_inode_depend(dip, nip);	/* before igetv */
-		*ap->a_vpp = hammer2_igetv(nip, &error);
+		*vpp = hammer2_igetv(nip, &error);
 		hammer2_inode_unlock(nip);
 	}
 
@@ -1501,10 +1496,22 @@ hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
 
 	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
 
+	if (error == 0)
+		hammer2_knote(dvp, knote_flags);
+	return error;
+}
+
+static
+int
+hammer2_vop_nmkdir(struct vop_nmkdir_args *ap)
+{
+	int error;
+
+	error = hammer2_nmake(ap->a_dvp, ap->a_nch->ncp, ap->a_vpp,
+			      ap->a_cred, ap->a_vap, NOTE_WRITE | NOTE_LINK);
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *ap->a_vpp);
-		hammer2_knote(ap->a_dvp, NOTE_WRITE | NOTE_LINK);
 	}
 	return error;
 }
@@ -1622,75 +1629,17 @@ hammer2_vop_nlink(struct vop_nlink_args *ap)
 	return error;
 }
 
-/*
- * hammer2_vop_ncreate { nch, dvp, vpp, cred, vap }
- *
- * The operating system has already ensured that the directory entry
- * does not exist and done all appropriate namespace locking.
- */
 static
 int
 hammer2_vop_ncreate(struct vop_ncreate_args *ap)
 {
-	hammer2_inode_t *dip;
-	hammer2_inode_t *nip;
-	struct namecache *ncp;
-	const char *name;
-	size_t name_len;
-	hammer2_tid_t inum;
 	int error;
 
-	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly || (dip->pmp->flags & HAMMER2_PMPF_EMERG))
-		return (EROFS);
-	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
-		return (ENOSPC);
-
-	ncp = ap->a_nch->ncp;
-	name = ncp->nc_name;
-	name_len = ncp->nc_nlen;
-	hammer2_trans_init(dip->pmp, 0);
-
-	inum = hammer2_trans_newinum(dip->pmp);
-
-	/*
-	 * Create the regular file as an inode and then create the directory
-	 * entry.
-	 *
-	 * dip must be locked before nip to avoid deadlock.
-	 */
-	hammer2_inode_lock(dip, 0);
-	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
-					  inum, &error);
-	if (error) {
-		error = hammer2_error_to_errno(error);
-	} else {
-		error = hammer2_dirent_create(dip, name, name_len,
-					      nip->meta.inum, nip->meta.type);
-	}
-	if (error) {
-		if (nip) {
-			hammer2_inode_unlink_finisher(nip, NULL);
-			hammer2_inode_unlock(nip);
-			nip = NULL;
-		}
-		*ap->a_vpp = NULL;
-	} else {
-		hammer2_inode_depend(dip, nip);	/* before igetv */
-		*ap->a_vpp = hammer2_igetv(nip, &error);
-		hammer2_inode_unlock(nip);
-	}
-
-	if (error == 0)
-		hammer2_update_dir_mtime(dip);
-	hammer2_inode_unlock(dip);
-
-	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
-
+	error = hammer2_nmake(ap->a_dvp, ap->a_nch->ncp, ap->a_vpp,
+			      ap->a_cred, ap->a_vap, NOTE_WRITE);
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *ap->a_vpp);
-		hammer2_knote(ap->a_dvp, NOTE_WRITE);
 	}
 	return error;
 }
@@ -1702,64 +1651,13 @@ static
 int
 hammer2_vop_nmknod(struct vop_nmknod_args *ap)
 {
-	hammer2_inode_t *dip;
-	hammer2_inode_t *nip;
-	struct namecache *ncp;
-	const char *name;
-	size_t name_len;
-	hammer2_tid_t inum;
 	int error;
 
-	dip = VTOI(ap->a_dvp);
-	if (dip->pmp->ronly || (dip->pmp->flags & HAMMER2_PMPF_EMERG))
-		return (EROFS);
-	if (hammer2_vfs_enospace(dip, 0, ap->a_cred) > 1)
-		return (ENOSPC);
-
-	ncp = ap->a_nch->ncp;
-	name = ncp->nc_name;
-	name_len = ncp->nc_nlen;
-	hammer2_trans_init(dip->pmp, 0);
-
-	/*
-	 * Create the device inode and then create the directory entry.
-	 *
-	 * dip must be locked before nip to avoid deadlock.
-	 */
-	inum = hammer2_trans_newinum(dip->pmp);
-
-	hammer2_inode_lock(dip, 0);
-	nip = hammer2_inode_create_normal(dip, ap->a_vap, ap->a_cred,
-					  inum, &error);
-	if (error) {
-		error = hammer2_error_to_errno(error);
-	} else {
-		error = hammer2_dirent_create(dip, name, name_len,
-					      nip->meta.inum, nip->meta.type);
-	}
-	if (error) {
-		if (nip) {
-			hammer2_inode_unlink_finisher(nip, NULL);
-			hammer2_inode_unlock(nip);
-			nip = NULL;
-		}
-		*ap->a_vpp = NULL;
-	} else {
-		hammer2_inode_depend(dip, nip);	/* before igetv */
-		*ap->a_vpp = hammer2_igetv(nip, &error);
-		hammer2_inode_unlock(nip);
-	}
-
-	if (error == 0)
-		hammer2_update_dir_mtime(dip);
-	hammer2_inode_unlock(dip);
-
-	hammer2_trans_done(dip->pmp, HAMMER2_TRANS_SIDEQ);
-
+	error = hammer2_nmake(ap->a_dvp, ap->a_nch->ncp, ap->a_vpp,
+			      ap->a_cred, ap->a_vap, NOTE_WRITE);
 	if (error == 0) {
 		cache_setunresolved(ap->a_nch);
 		cache_setvp(ap->a_nch, *ap->a_vpp);
-		hammer2_knote(ap->a_dvp, NOTE_WRITE);
 	}
 	return error;
 }
