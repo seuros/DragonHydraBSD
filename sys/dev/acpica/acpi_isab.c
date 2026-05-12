@@ -86,6 +86,8 @@ static driver_t acpi_isab_driver = {
 	.gpri = KOBJ_GPRI_ACPI+2
 };
 
+devclass_t isab_devclass;
+
 DRIVER_MODULE(acpi_isab, acpi, acpi_isab_driver, isab_devclass, NULL, NULL);
 MODULE_DEPEND(acpi_isab, acpi, 1, 1, 1);
 

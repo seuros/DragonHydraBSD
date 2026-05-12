@@ -97,7 +97,6 @@ options 	SYM_SETUP_LP_PROBE_MAP=0x40
 				# Allow ncr to attach legacy NCR devices when
 				# both sym and ncr are configured
 
-device		adv0	at isa?
 device		adw
 device		bt
 
@@ -152,7 +151,7 @@ device		atkbdc0	at isa? port IO_KBD
 device		atkbd0	at atkbdc? irq 1
 device		psm0	at atkbdc? irq 12
 
-device		vga0	at isa?
+device		vga
 
 # kbdmux is the keyboard multiplexer
 device		kbdmux
@@ -175,7 +174,6 @@ device		perfbias
 device		clockmod
 
 # HW monitoring devices
-#device		aps0	at isa? port 0x1600
 device		lm0	at isa? port 0x290
 device		it0	at isa?	port 0x290
 device		it1	at isa?	port 0xc00
@@ -270,13 +268,7 @@ device		ral		# Ralink Technology 802.11 wireless NIC
 device		iwn		# Intel IEEE 802.11n wireless network driver
 #device		rtw		# RealTek 802.11 wireless NIC
 device		wpi		# Intel 3945ABG Wireless LAN IEEE 802.11 driver
-# WaveLAN/IEEE 802.11 wireless NICs.  Note: the WaveLAN/IEEE really
-# exists only as a PCMCIA device, so there is no ISA attachment needed
-# and resources will always be dynamically assigned by the pccard code.
-device		wi
-
-device		lnc0	at isa? disable port 0x280 irq 10 drq 0
-device		sn0	at isa? disable port 0x300 irq 10
+device		wi		# WaveLAN/IEEE 802.11 wireless NIC (PCMCIA only)
 
 # Pseudo devices - the number indicates how many units to allocate.
 pseudo-device	loop		# Network loopback

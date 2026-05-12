@@ -35,7 +35,6 @@ MAN=	aac.4 \
 	amdtemp.4 \
 	amr.4 \
 	aperf.4 \
-	aps.4 \
 	arcmsr.4 \
 	arp.4 \
 	asr.4 \
@@ -223,13 +222,11 @@ MAN=	aac.4 \
 	ng_UI.4 \
 	ng_vjc.4 \
 	nmdm.4 \
-	nsclpcsio.4 \
 	null.4 \
 	nvme.4 \
 	nvmm.4 \
 	oce.4 \
 	ohci.4 \
-	orm.4 \
 	pass.4 \
 	pccard.4 \
 	pccbb.4 \
@@ -348,7 +345,6 @@ MAN=	aac.4 \
 	uipaq.4 \
 	ugen.4 \
 	ugensa.4 \
-	uguru.4 \
 	uhci.4 \
 	uhid.4 \
 	ukbd.4 \

@@ -42,11 +42,6 @@ To compile this driver into the kernel,
 place the following lines in your
 kernel configuration file:
 .Bd -ragged -offset indent
-For ISA based ATA/ATAPI support:
-.Cd device isa
-.Cd device nata0 at isa? port IO_WD1 irq 14
-.Cd device nata1 at isa? port IO_WD2 irq 15
-.Pp
 For PCI based ATA/ATAPI support:
 .Cd device pci
 .Cd device nata
@@ -74,7 +69,6 @@ module at boot time, place the following line in
 nata_load="YES"
 natacard_load="YES"
 natadisk_load="YES"
-nataisa_load="YES"
 natapci_load="YES"
 natapicd_load="YES"
 natapifd_load="YES"

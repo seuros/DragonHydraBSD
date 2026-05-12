@@ -96,7 +96,6 @@ dev/disk/fd/fd.c			optional fd
 dev/disk/fd/fd_pccard.c			optional fd pccard
 
 dev/pccard/pccbb/pccbb.c		optional cbb
-dev/pccard/pccbb/pccbb_isa.c		optional cbb isa
 dev/pccard/pccbb/pccbb_pci.c		optional cbb pci
 dev/pccard/cardbus/cardbus.c		optional cardbus
 dev/pccard/cardbus/cardbus_cis.c	optional cardbus
@@ -136,7 +135,6 @@ dev/disk/nata/ata-card.c		optional nata pccard
 dev/disk/nata/ata-chipset.c		optional nata pci
 dev/disk/nata/ata-disk.c		optional natadisk
 dev/disk/nata/ata-dma.c			optional nata pci
-dev/disk/nata/ata-isa.c			optional nata isa
 dev/disk/nata/ata-lowlevel.c		optional nata
 dev/disk/nata/ata-pci.c			optional nata pci
 dev/disk/nata/ata-queue.c		optional nata
@@ -1048,7 +1046,6 @@ rt2860.fw			optional ralfw				\
 dev/netif/lge/if_lge.c	optional lge
 dev/misc/ipmi/ipmi.c		optional ipmi
 dev/misc/ipmi/ipmi_acpi.c	optional ipmi acpi
-dev/misc/ipmi/ipmi_isa.c	optional ipmi isa
 dev/misc/ipmi/ipmi_kcs.c	optional ipmi
 dev/misc/ipmi/ipmi_smic.c	optional ipmi
 dev/misc/ipmi/ipmi_smbus.c	optional ipmi smbus
@@ -1250,7 +1247,6 @@ dev/crypto/tpm/tpm.c		optional tpm
 dev/crypto/tpm/tpm20.c		optional tpm
 dev/crypto/tpm/tpm_acpi.c	optional tpm acpi
 dev/crypto/tpm/tpm_crb.c	optional tpm acpi
-dev/crypto/tpm/tpm_isa.c	optional tpm isa
 dev/crypto/tpm/tpm_tis.c	optional tpm acpi
 bus/iicbus/iicbb.c	optional iicbb
 bus/iicbus/iicbb_if.m		optional iicbb
@@ -1904,10 +1900,10 @@ bus/pccard/pccard_cis.c		optional pccard
 bus/pccard/pccard_cis_quirks.c	optional pccard
 bus/pccard/power_if.m		standard
 dev/agp/agp.c			optional agp
-dev/agp/agp_via.c		optional agp
-dev/agp/agp_sis.c		optional agp
 dev/agp/agp_amd64.c		optional agp
 dev/agp/agp_if.m		optional agp
+dev/agp/agp_sis.c		optional agp
+dev/agp/agp_via.c		optional agp
 dev/agp/intel-gtt.c		optional agp
 dev/disk/amd/amd.c		optional amd
 dev/video/bktr/bktr_audio.c	optional bktr pci
@@ -1959,7 +1955,6 @@ pcidevs.h			optional pci \
 bus/pci/fixup_pci.c		optional pci
 bus/pci/hostb_pci.c		optional pci
 bus/pci/ignore_pci.c		optional pci
-bus/pci/isa_pci.c		optional pci isa
 bus/pci/pci.c			optional pci
 bus/pci/pci_if.m		optional pci
 bus/pci/pci_pci.c		optional pci
@@ -2096,7 +2091,6 @@ dev/netif/lnc/lance.c		optional lnc
 bus/isa/isa_if.m		optional isa
 bus/isa/isa_common.c		optional isa
 bus/isa/isahint.c		optional isa
-bus/isa/pnpeat.c		optional isa
 dev/misc/amdsbwd/amdsbwd.c	optional amdsbwd
 dev/misc/backlight/backlight.c	optional backlight
 dev/misc/backlight/backlight_if.m	optional backlight
@@ -2114,14 +2108,11 @@ dev/misc/evdev/evdev_mt.c	optional evdev
 dev/misc/evdev/evdev_utils.c	optional evdev
 dev/misc/joy/joy.c		optional joy
 dev/misc/kbdmux/kbdmux.c	optional kbdmux
-dev/misc/orm/orm.c		optional isa
 dev/misc/gpio/gpio.c		optional gpio
 dev/misc/gpio/gpio_led.c	optional gpio
 dev/misc/ichwd/ichwd.c		optional ichwd
 dev/misc/tbridge/safe_mem.c	optional tbridge
 dev/misc/tbridge/tbridge.c	optional tbridge
-bus/isa/pnp.c			optional isa
-bus/isa/pnpparse.c		optional isa
 #
 dev/sound/clone.c		optional sound
 dev/sound/unit.c		optional sound
@@ -2595,12 +2586,9 @@ dev/drm/radeon/uvd_v3_1.c		optional radeon drm compile-with "${NORMAL_C} -includ
 dev/drm/radeon/uvd_v4_2.c		optional radeon drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/radeon/vce_v1_0.c		optional radeon drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
 dev/drm/radeon/vce_v2_0.c		optional radeon drm compile-with "${NORMAL_C} -include $S/dev/drm/kconfig.h ${WERROR}"
-dev/misc/nsclpcsio/nsclpcsio_isa.c	optional nsclpcsio isa
-dev/powermng/aps/aps.c			optional aps isa
 dev/powermng/it/it.c			optional it isa
 dev/powermng/lm/lm78.c			optional lm isa
 dev/powermng/lm/lm78_isa.c		optional lm isa
-dev/powermng/uguru/uguru.c		optional uguru isa
 dev/powermng/wbsio/wbsio.c		optional wbsio isa
 
 # OS ACPI MI code
