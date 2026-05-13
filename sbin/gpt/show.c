@@ -37,16 +37,56 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <libfstyp.h>
+
 #include "gpt.h"
 
+static bool show_fstype = false;
 static bool show_guid = false;
-static bool show_label = false;
+static bool show_gptlabel = false;
 static bool show_uuid = false;
+
+/*
+ * funopen() cookie for reading a partition slice out of a whole-disk fd.
+ * Translates SEEK_SET offsets so that offset 0 maps to the partition start.
+ */
+struct part_cookie {
+	int	fd;
+	off_t	base;
+};
+
+static int
+part_read(void *cookie, char *buf, int nbytes)
+{
+	struct part_cookie *pc = cookie;
+
+	return (read(pc->fd, buf, nbytes));
+}
+
+static fpos_t
+part_seek(void *cookie, fpos_t offset, int whence)
+{
+	struct part_cookie *pc = cookie;
+
+	if (whence == SEEK_SET)
+		offset += pc->base;
+	return (lseek(pc->fd, offset, whence));
+}
+
+static int
+part_close(void *cookie)
+{
+	struct part_cookie *pc = cookie;
+	int dupfd = pc->fd;
+
+	free(pc);
+	return (close(dupfd));
+}
 
 static void
 usage_show(void)
 {
-	fprintf(stderr, "usage: %s [-glu] device ...\n", getprogname());
+	fprintf(stderr, "usage: %s [-fglu] device ...\n", getprogname());
 	exit(1);
 }
 
@@ -73,7 +113,7 @@ unfriendly:
 }
 
 static void
-show(int fd __unused)
+show(int fd)
 {
 	uuid_t type, guid;
 	off_t start;
@@ -170,7 +210,7 @@ show(int fd __unused)
 		case MAP_TYPE_GPT_PART:
 			printf("GPT part ");
 			ent = m->map_data;
-			if (show_label) {
+			if (show_gptlabel) {
 				utf16_to_utf8(ent->ent_name,
 				    NELEM(ent->ent_name),
 				    utfbuf, sizeof(utfbuf));
@@ -185,6 +225,37 @@ show(int fd __unused)
 			} else {
 				uuid_dec_le(&ent->ent_type, &type);
 				printf("- %s", friendly(&type));
+			}
+			if (show_fstype) {
+				struct part_cookie *pc;
+				FILE *pfp;
+				int dupfd;
+
+				dupfd = dup(fd);
+				if (dupfd >= 0) {
+					pc = malloc(sizeof(*pc));
+					if (pc != NULL) {
+						pc->fd = dupfd;
+						pc->base = m->map_start * secsz;
+						lseek(dupfd, pc->base, SEEK_SET);
+						pfp = funopen(pc, part_read,
+						    NULL, part_seek,
+						    part_close);
+						if (pfp != NULL) {
+							const char *fsname;
+							fsname = fstyp_identify(pfp);
+							if (fsname != NULL)
+								printf(" (%s)",
+								    fsname);
+							fclose(pfp);
+						} else {
+							close(dupfd);
+							free(pc);
+						}
+					} else {
+						close(dupfd);
+					}
+				}
 			}
 			break;
 		case MAP_TYPE_PMBR:
@@ -207,13 +278,16 @@ cmd_show(int argc, char *argv[])
 {
 	int ch, fd;
 
-	while ((ch = getopt(argc, argv, "ghlu")) != -1) {
+	while ((ch = getopt(argc, argv, "fghlu")) != -1) {
 		switch(ch) {
+		case 'f':
+			show_fstype = true;
+			break;
 		case 'g':
 			show_guid = true;
 			break;
 		case 'l':
-			show_label = true;
+			show_gptlabel = true;
 			break;
 		case 'u':
 			show_uuid = true;

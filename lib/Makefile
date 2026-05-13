@@ -68,6 +68,7 @@ SUBDIR=	${SUBDIR_ORDERED} \
 	libevtr \
 	libexpat \
 	libfsid \
+	libfstyp \
 	libftpio \
 	libhammer \
 	libipfw3 \

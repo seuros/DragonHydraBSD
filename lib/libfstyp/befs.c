@@ -33,7 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "fstyp.h"
+#include "libfstyp.h"
 
 #define B_OS_NAME_LENGTH	32
 #define BEFS_BLOCK_OFFSET	512

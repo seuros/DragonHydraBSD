@@ -34,7 +34,7 @@
 #include <uuid.h>
 #include <vfs/hammer2/hammer2_disk.h>
 
-#include "fstyp.h"
+#include "libfstyp.h"
 
 static ssize_t
 get_file_size(FILE *fp)

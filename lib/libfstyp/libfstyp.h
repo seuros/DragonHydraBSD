@@ -26,17 +26,17 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD$
  */
 
-#ifndef FSTYP_H
-#define	FSTYP_H
+#ifndef _LIBFSTYP_H_
+#define	_LIBFSTYP_H_
 
 #include <stdbool.h>
+#include <stdio.h>
+#include <sys/types.h>
 
 /* Undefine this on FreeBSD and NetBSD. */
-#define HAS_DEVPATH
+#define	HAS_DEVPATH
 
 /* The spec doesn't seem to permit UTF-16 surrogates; definitely LE. */
 #define	EXFAT_ENC	"UCS-2LE"
@@ -48,10 +48,12 @@
 
 extern bool	show_label;	/* -l flag */
 
+/* Helpers */
 void	*read_buf(FILE *fp, off_t off, size_t len);
 char	*checked_strdup(const char *s);
 void	rtrim(char *label, size_t size);
 
+/* Probe functions - return 0 on match, 1 on no match */
 int	fstyp_apfs(FILE *fp, char *label, size_t size, const char *devpath);
 int	fstyp_befs(FILE *fp, char *label, size_t size, const char *devpath);
 int	fstyp_cd9660(FILE *fp, char *label, size_t size, const char *devpath);
@@ -64,9 +66,16 @@ int	fstyp_ufs(FILE *fp, char *label, size_t size, const char *devpath);
 int	fstyp_hammer(FILE *fp, char *label, size_t size, const char *devpath);
 int	fstyp_hammer2(FILE *fp, char *label, size_t size, const char *devpath);
 
+/* Volume-based probes (path-based, not FILE*) */
 int	fsvtyp_hammer(const char *blkdevs, char *label, size_t size);
 int	fsvtyp_hammer_partial(const char *blkdevs, char *label, size_t size);
 int	fsvtyp_hammer2(const char *blkdevs, char *label, size_t size);
 int	fsvtyp_hammer2_partial(const char *blkdevs, char *label, size_t size);
 
-#endif /* !FSTYP_H */
+/*
+ * Convenience: try all FILE*-based probes and return the filesystem name,
+ * or NULL if none matched.
+ */
+const char *fstyp_identify(FILE *fp);
+
+#endif /* !_LIBFSTYP_H_ */

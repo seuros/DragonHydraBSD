@@ -36,7 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "fstyp.h"
+#include "libfstyp.h"
 
 #define	NTFS_A_VOLUMENAME	0x60
 #define	NTFS_FILEMAGIC		((uint32_t)(0x454C4946))

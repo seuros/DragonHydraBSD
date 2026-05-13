@@ -45,11 +45,9 @@
 #include <unistd.h>
 #include <vis.h>
 
-#include "fstyp.h"
+#include <libfstyp.h>
 
 #define	LABEL_LEN	512
-
-bool show_label = false;
 
 typedef int (*fstyp_function)(FILE *, char *, size_t, const char *);
 typedef int (*fsvtyp_function)(const char *, char *, size_t);
@@ -86,62 +84,6 @@ static struct {
 	{ "hammer2(partial)", &fsvtyp_hammer2_partial, true, NULL },
 	{ NULL, NULL, NULL, NULL }
 };
-
-void *
-read_buf(FILE *fp, off_t off, size_t len)
-{
-	int error;
-	size_t nread;
-	void *buf;
-
-	error = fseek(fp, off, SEEK_SET);
-	if (error != 0) {
-		warn("cannot seek to %jd", (uintmax_t)off);
-		return (NULL);
-	}
-
-	buf = malloc(len);
-	if (buf == NULL) {
-		warn("cannot malloc %zd bytes of memory", len);
-		return (NULL);
-	}
-
-	nread = fread(buf, len, 1, fp);
-	if (nread != 1) {
-		free(buf);
-		if (feof(fp) == 0)
-			warn("fread");
-		return (NULL);
-	}
-
-	return (buf);
-}
-
-char *
-checked_strdup(const char *s)
-{
-	char *c;
-
-	c = strdup(s);
-	if (c == NULL)
-		err(1, "strdup");
-	return (c);
-}
-
-void
-rtrim(char *label, size_t size)
-{
-	ptrdiff_t i;
-
-	for (i = size - 1; i >= 0; i--) {
-		if (label[i] == '\0')
-			continue;
-		else if (label[i] == ' ')
-			label[i] = '\0';
-		else
-			break;
-	}
-}
 
 static void
 usage(void)

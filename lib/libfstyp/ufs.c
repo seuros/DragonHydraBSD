@@ -39,7 +39,7 @@
 #include <vfs/ufs/ufs_types.h>
 #include <vfs/ufs/fs.h>
 
-#include "fstyp.h"
+#include "libfstyp.h"
 
 /*
  * Filesystem identification

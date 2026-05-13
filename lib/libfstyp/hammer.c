@@ -32,7 +32,7 @@
 #include <uuid.h>
 #include <vfs/hammer/hammer_disk.h>
 
-#include "fstyp.h"
+#include "libfstyp.h"
 
 static hammer_volume_ondisk_t
 read_ondisk(FILE *fp)

@@ -491,12 +491,20 @@ See above for a description of these options.
 Partitions are removed by clearing the partition type.
 No other information is changed.
 .\" ==== show ====
-.It Nm Ic show Oo Fl glu Oc Ar device ...
+.It Nm Ic show Oo Fl fglu Oc Ar device ...
 The
 .Ic show
 command displays the current partitioning on the listed devices and gives
 an overall view of the disk contents.
 By default, the GPT partition type is displayed in a user-friendly form.
+If the
+.Fl f
+option is specified, the filesystem type is probed by reading the superblock
+of each partition and appended in parentheses after the partition type
+.Pq e.g., Dq Linux Data (ext4) .
+Recognized filesystems include ext2, ext3, ext4, XFS, Btrfs, UFS1, UFS2,
+HAMMER, HAMMER2, NTFS, FAT12/16/32, exFAT, HFS+, F2FS, NILFS2, ReiserFS,
+and JFS.
 If the
 .Fl u
 option is specified, the GPT partition type is displayed as a UUID.

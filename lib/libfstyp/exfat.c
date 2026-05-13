@@ -37,7 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "fstyp.h"
+#include "libfstyp.h"
 
 /*
  * https://docs.microsoft.com/en-us/windows/win32/fileio/exfat-specification

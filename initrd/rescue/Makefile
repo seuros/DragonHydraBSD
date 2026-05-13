@@ -239,6 +239,7 @@ CRUNCH_LIBS+= -lprivate_edit  # bc, sh, vinum
 #CRUNCH_LIBS+= -lprivate_ncurses  # bc, less, ls, tput, vinum (=> ncursesw)
 CRUNCH_LIBS+= -lprivate_ncursesw  # vi
 CRUNCH_LIBS+= -lutil
+CRUNCH_LIBS+= -lfstyp  # fstyp
 CRUNCH_LIBS+= -lz  # savecore
 CRUNCH_LIBS+= -lprivate_zstd  # multiple
 CRUNCH_LIBS+= -lm  # awk, ps, ping

@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "fstyp.h"
+#include "libfstyp.h"
 #include "msdosfs.h"
 
 #define LABEL_NO_NAME		"NO NAME    "

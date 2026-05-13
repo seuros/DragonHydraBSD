@@ -35,73 +35,91 @@ __FBSDID("$FreeBSD$");
 #include <stdlib.h>
 #include <string.h>
 
-#include "fstyp.h"
+#include "libfstyp.h"
 
 /*
- * This really detects the container format, which might be best supported by
- * geom_part or a special GEOM class.
- *
- * https://developer.apple.com/support/downloads/Apple-File-System-Reference.pdf
+ * https://developer.apple.com/library/archive/technotes/tn/tn1150.html
  */
 
-#define	NX_CKSUM_SZ		8
+#define	VOL_HDR_OFF	1024
 
-typedef uint64_t nx_oid_t;
+typedef uint32_t hfsp_cat_nodeid;
 
-typedef uint64_t nx_xid_t;
+typedef struct hfsp_ext_desc {
+	uint32_t	ex_startBlock;
+	uint32_t	ex_blockCount;
+} hfsp_ext_desc;
 
-struct nx_obj {
-	uint8_t		o_cksum[NX_CKSUM_SZ];	/* Fletcher 64 */
-	nx_oid_t	o_oid;
-	nx_xid_t	o_xid;
-	uint32_t	o_type;
-	uint32_t	o_subtype;
+typedef struct hfsp_fork_data {
+	uint64_t	fd_logicalSz;
+	uint32_t	fd_clumpSz;
+	uint32_t	fd_totalBlocks;
+	hfsp_ext_desc	fd_extents[8];
+} hfsp_fork_data;
+
+struct hfsp_vol_hdr {
+	char		hp_signature[2];
+	uint16_t	hp_version;
+	uint32_t	hp_attributes;
+	uint32_t	hp_lastMounted;
+	uint32_t	hp_journalInfoBlock;
+
+	/* Creation / etc dates. */
+	uint32_t	hp_create;
+	uint32_t	hp_modify;
+	uint32_t	hp_backup;
+	uint32_t	hp_checked;
+
+	/* Stats */
+	uint32_t	hp_files;
+	uint32_t	hp_folders;
+
+	/* Parameters */
+	uint32_t	hp_blockSize;
+	uint32_t	hp_totalBlocks;
+	uint32_t	hp_freeBlocks;
+
+	uint32_t	hp_nextAlloc;
+	uint32_t	hp_rsrcClumpSz;
+	uint32_t	hp_dataClumpSz;
+
+	hfsp_cat_nodeid	hp_nextCatID;
+
+	uint32_t	hp_writeCount;
+	uint64_t	hp_encodingsBM;
+
+	uint32_t	hp_finderInfo[8];
+
+	hfsp_fork_data	hp_allocationFile;
+	hfsp_fork_data	hp_extentsFile;
+	hfsp_fork_data	hp_catalogFile;
+	hfsp_fork_data	hp_attributesFile;
+	hfsp_fork_data	hp_startupFile;
 };
-
-/* nx_obj::o_oid */
-#define	OID_NX_SUPERBLOCK	1
-
-/* nx_obj::o_type: */
-#define	OBJECT_TYPE_MASK		0x0000ffff
-#define	OBJECT_TYPE_NX_SUPERBLOCK	0x00000001
-#define	OBJECT_TYPE_FLAGS_MASK		0xffff0000
-#define	OBJ_STORAGETYPE_MASK		0xc0000000
-#define	OBJECT_TYPE_FLAGS_DEFINED_MASK	0xf8000000
-#define	OBJ_STORAGE_VIRTUAL		0x00000000
-#define	OBJ_STORAGE_EPHEMERAL		0x80000000
-#define	OBJ_STORAGE_PHYSICAL		0x40000000
-#define	OBJ_NOHEADER			0x20000000
-#define	OBJ_ENCRYPTED			0x10000000
-#define	OBJ_NONPERSISTENT		0x08000000
-
-struct nx_superblock {
-	struct nx_obj	nx_o;
-	char		nx_magic[4];
-	/* ... other stuff that doesn't matter */
-};
+_Static_assert(sizeof(struct hfsp_vol_hdr) == 512, "");
 
 int
-fstyp_apfs(FILE *fp, char *label, size_t size, const char *devpath)
+fstyp_hfsp(FILE *fp, char *label, size_t size, const char *devpath)
 {
-	struct nx_superblock *csb;
+	struct hfsp_vol_hdr *hdr;
 	int retval;
 
 	retval = 1;
-	csb = read_buf(fp, 0, sizeof(*csb));
-	if (csb == NULL)
+	hdr = read_buf(fp, VOL_HDR_OFF, sizeof(*hdr));
+	if (hdr == NULL)
 		goto fail;
 
-	/* Ideally, checksum the SB here. */
-	if (strncmp(csb->nx_magic, "NXSB", 4) != 0 ||
-	    csb->nx_o.o_oid != OID_NX_SUPERBLOCK ||
-	    (csb->nx_o.o_type & OBJECT_TYPE_MASK) != OBJECT_TYPE_NX_SUPERBLOCK)
+	if ((strncmp(hdr->hp_signature, "H+", 2) != 0 || hdr->hp_version != 4)
+	    &&
+	    (strncmp(hdr->hp_signature, "HX", 2) != 0 || hdr->hp_version != 5))
 		goto fail;
 
+	/* This is an HFS+ volume. */
 	retval = 0;
 
 	/* No label support yet. */
 
 fail:
-	free(csb);
+	free(hdr);
 	return (retval);
 }
