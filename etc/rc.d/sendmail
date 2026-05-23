@@ -45,28 +45,32 @@ sendmail_precmd()
 		fi
 	fi
 
-	# check modifications on /etc/mail/aliases
-	if checkyesno sendmail_rebuild_aliases; then
-		if [ ! -f "/etc/mail/aliases.db" ]; then
-			echo "${name}: /etc/mail/aliases.db not present, " \
-			     "generating"
-			/usr/bin/newaliases
-		elif [ "/etc/mail/aliases" -nt "/etc/mail/aliases.db" ]; then
-			echo "${name}: /etc/mail/aliases newer than " \
-			     "/etc/mail/aliases.db, regenerating"
-			/usr/bin/newaliases
+	# DMA reads aliases as plain text; db files are sendmail-only.
+	_mta_newaliases=$(grep '^newaliases' /etc/mail/mailer.conf 2>/dev/null | awk '{print $2}')
+	if [ "$_mta_newaliases" != "/usr/libexec/dma" ]; then
+		# check modifications on /etc/mail/aliases
+		if checkyesno sendmail_rebuild_aliases; then
+			if [ ! -f "/etc/mail/aliases.db" ]; then
+				echo "${name}: /etc/mail/aliases.db not present, " \
+				     "generating"
+				/usr/bin/newaliases
+			elif [ "/etc/mail/aliases" -nt "/etc/mail/aliases.db" ]; then
+				echo "${name}: /etc/mail/aliases newer than " \
+				     "/etc/mail/aliases.db, regenerating"
+				/usr/bin/newaliases
+			fi
 		fi
-	fi
 
-	# check couple of common db files, too
-	for f in genericstable virtusertable domaintable mailertable; do
-		if [ -r "/etc/mail/$f" ] && \
-		   [ "/etc/mail/$f" -nt "/etc/mail/$f.db" ]; then
-			echo "${name}: /etc/mail/$f newer than " \
-			     "/etc/mail/$f.db, regenerating"
-			/usr/sbin/makemap hash /etc/mail/$f < /etc/mail/$f
-		fi
-	done
+		# check couple of common db files, too
+		for f in genericstable virtusertable domaintable mailertable; do
+			if [ -r "/etc/mail/$f" ] && \
+			   [ "/etc/mail/$f" -nt "/etc/mail/$f.db" ]; then
+				echo "${name}: /etc/mail/$f newer than " \
+				     "/etc/mail/$f.db, regenerating"
+				/usr/sbin/makemap hash /etc/mail/$f < /etc/mail/$f
+			fi
+		done
+	fi
 }
 
 run_rc_command "$1"
