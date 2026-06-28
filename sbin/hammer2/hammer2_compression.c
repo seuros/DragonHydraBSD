@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  */
 #include "hammer2.h"
-#include "lz4/hammer2_lz4.h"
+#include "vfs/hammer2/hammer2_lz4.h"
 #include "zlib/hammer2_zlib.h"
 
 #define DEBUFSIZE	HAMMER2_PBUFSIZE

@@ -106,7 +106,7 @@ Note : this source file requires "hammer2_lz4_encoder.h"
 // Includes
 //**************************************
 #include "hammer2.h"
-#include "hammer2_lz4.h"
+#include "vfs/hammer2/hammer2_lz4.h"
 //#include <sys/malloc.h> //for malloc macros, hammer2.h includes sys/param.h
 
 
@@ -319,7 +319,7 @@ LZ4_NbCommonBytes (register U32 val)
 // Compression functions
 //******************************
 
-#include "hammer2_lz4_encoder.h"
+#include "vfs/hammer2/hammer2_lz4_encoder.h"
 
 /*
 void* LZ4_createHeapMemory();

@@ -56,7 +56,7 @@
 */
 
 #include "hammer2.h"
-#include "hammer2_lz4.h"
+#include "vfs/hammer2/hammer2_lz4.h"
 
 #include "zlib/hammer2_zlib.h"
 
