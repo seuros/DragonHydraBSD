@@ -217,14 +217,12 @@ struct nvmm_cap_md {
 
 #include <sys/types.h>
 #include <sys/bitops.h>
-#if defined(__DragonFly__)
 #ifdef __x86_64__
 #undef  __BIT
 #define __BIT(__n)		__BIT64(__n)
 #undef  __BITS
 #define __BITS(__m, __n)	__BITS64(__m, __n)
 #endif /* __x86_64__ */
-#endif
 
 /* Segment state. */
 struct nvmm_x64_state_seg {

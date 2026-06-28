@@ -584,9 +584,7 @@ struct svm_cpudata {
 		uint64_t fsbase;
 		uint64_t kernelgsbase;
 		uint64_t drs[NVMM_X64_NDR];
-#ifdef __DragonFly__
 		mcontext_t hmctx;  /* TODO: remove this like NetBSD */
-#endif
 	} hstate;
 
 	/* Intr state. */
@@ -1449,15 +1447,11 @@ svm_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 {
 	struct svm_cpudata *cpudata = vcpu->cpudata;
 
-#if defined(__NetBSD__)
-	x86_curthread_save_fpu();
-#elif defined(__DragonFly__)
 	/*
 	 * NOTE: Host FPU state depends on whether the user program used the
 	 *       FPU or not.  Need to use npxpush()/npxpop() to handle this.
 	 */
 	npxpush(&cpudata->hstate.hmctx);
-#endif
 
 	x86_restore_fpu(&cpudata->gxsave, svm_xcr0_mask);
 	if (svm_xcr0_mask != 0) {
@@ -1475,11 +1469,7 @@ svm_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 	}
 	x86_save_fpu(&cpudata->gxsave, svm_xcr0_mask);
 
-#if defined(__NetBSD__)
-	x86_curthread_restore_fpu();
-#elif defined(__DragonFly__)
 	npxpop(&cpudata->hstate.hmctx);
-#endif
 }
 
 static void
@@ -1565,12 +1555,8 @@ svm_htlb_flush(struct nvmm_machine *mach, struct svm_cpudata *cpudata)
 	struct vmcb *vmcb = cpudata->vmcb;
 	uint64_t machgen;
 
-#if defined(__NetBSD__)
-	machgen = ((struct svm_machdata *)mach->machdata)->mach_htlb_gen;
-#elif defined(__DragonFly__)
 	clear_xinvltlb();
 	machgen = vmspace_pmap(mach->vm)->pm_invgen;
-#endif
 	if (__predict_true(machgen == cpudata->vcpu_htlb_gen)) {
 		return machgen;
 	}
@@ -1616,11 +1602,6 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	svm_vcpu_state_commit(vcpu);
 	comm->state_cached = 0;
 
-#ifndef __DragonFly__
-	if (__predict_false(svm_vcpu_event_commit(vcpu) != 0)) {
-		return EINVAL;
-	}
-#endif
 
 	os_preempt_disable();
 	hcpu = os_curcpu_number();
@@ -1632,14 +1613,12 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		svm_vmcb_cache_flush_all(vmcb);
 		cpudata->gtsc_want_update = true;
 
-#ifdef __DragonFly__
 		/*
 		 * XXX: We aren't tracking overloaded CPUs (multiple vCPUs
 		 *      scheduled on the same physical CPU) yet so there are
 		 *      currently no calls to pmap_del_cpu().
 		 */
 		pmap_add_cpu(mach->vm, hcpu);
-#endif
 	}
 
 	svm_vcpu_guest_dbregs_enter(vcpu);
@@ -1663,7 +1642,6 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		svm_vcpu_guest_fpu_enter(vcpu);
 		machgen = svm_htlb_flush(mach, cpudata);
 
-#ifdef __DragonFly__
 		/*
 		 * Check for pending host events (e.g., interrupt, AST)
 		 * to make the state safe to VM Entry.  This check must
@@ -1696,7 +1674,6 @@ svm_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			error = EINVAL;
 			break;
 		}
-#endif
 
 		svm_vmrun(cpudata->vmcb_pa, cpudata->gprs);
 		svm_htlb_flush_ack(cpudata, machgen);
@@ -2515,23 +2492,6 @@ svm_vcpu_configure(struct nvmm_cpu *vcpu, uint64_t op, void *data)
 
 /* -------------------------------------------------------------------------- */
 
-#ifdef __NetBSD__
-static void
-svm_tlb_flush(struct pmap *pm)
-{
-	struct nvmm_machine *mach = os_pmap_mach(pm);
-	struct svm_machdata *machdata = mach->machdata;
-
-	os_atomic_inc_64(&machdata->mach_htlb_gen);
-
-	/*
-	 * Send a dummy IPI to each CPU. The IPIs cause #VMEXITs. Afterwards the
-	 * VCPU loops will see that their 'vcpu_htlb_gen' is out of sync, and
-	 * will each flush their own TLB.
-	 */
-	os_ipi_kickall();
-}
-#endif
 
 static void
 svm_machine_create(struct nvmm_machine *mach)
@@ -2540,12 +2500,7 @@ svm_machine_create(struct nvmm_machine *mach)
 	struct svm_machdata *machdata;
 
 	/* Transform pmap. */
-#if defined(__NetBSD__)
-	os_pmap_mach(pmap) = (void *)mach;
-	pmap->pm_tlb_flush = svm_tlb_flush;
-#elif defined(__DragonFly__)
 	pmap_npt_transform(pmap, 0);
-#endif
 
 	machdata = os_mem_zalloc(sizeof(struct svm_machdata));
 	mach->machdata = machdata;

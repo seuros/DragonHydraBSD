@@ -48,11 +48,7 @@ typedef uint32_t	nvmm_cpuid_t;
 #define NVMM__CTASSERT(x, y)	typedef char __assert ## y[(x) ? 1 : -1] __unused
 
 #if defined(__x86_64__)
-#if defined(__NetBSD__)
-#include <dev/nvmm/x86/nvmm_x86.h>
-#elif defined(__DragonFly__)
 #include <dev/virtual/nvmm/x86/nvmm_x86.h>
-#endif
 #endif /* __x86_64__ */
 
 /*

@@ -26,19 +26,9 @@
  * SUCH DAMAGE.
  */
 
-#if defined(__NetBSD__)
-/* Override user-land alignment before including asm.h */
-#define ALIGN_DATA	.align	8
-#define ALIGN_TEXT	.align 16,0x90
-#define _ALIGN_TEXT	ALIGN_TEXT
-#define _LOCORE
-#include "assym.h"
-#include <machine/asm.h>
-#elif defined(__DragonFly__)
 #define _C_LABEL(x)	x
 #include <machine/asmacros.h>
 #include "assym.s"
-#endif
 
 #define ASM_NVMM
 #include "nvmm_x86.h"

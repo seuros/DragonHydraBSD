@@ -31,13 +31,7 @@
 
 #include <sys/ioccom.h>
 
-#if defined(__NetBSD__)
-#include <dev/nvmm/nvmm.h>
-#elif defined(__DragonFly__)
 #include <dev/virtual/nvmm/nvmm.h>
-#else
-#error "Unsupported OS."
-#endif
 
 struct nvmm_ioc_capability {
 	struct nvmm_capability cap;

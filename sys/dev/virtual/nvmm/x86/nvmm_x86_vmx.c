@@ -846,9 +846,7 @@ struct vmx_cpudata {
 	struct {
 		uint64_t kernelgsbase;
 		uint64_t drs[NVMM_X64_NDR];
-#ifdef __DragonFly__
 		mcontext_t hmctx;  /* TODO: remove this like NetBSD */
-#endif
 	} hstate;
 
 	/* Intr state. */
@@ -2074,15 +2072,11 @@ vmx_vcpu_guest_fpu_enter(struct nvmm_cpu *vcpu)
 {
 	struct vmx_cpudata *cpudata = vcpu->cpudata;
 
-#if defined(__NetBSD__)
-	x86_curthread_save_fpu();
-#elif defined(__DragonFly__)
 	/*
 	 * NOTE: Host FPU state depends on whether the user program used the
 	 *       FPU or not.  Need to use npxpush()/npxpop() to handle this.
 	 */
 	npxpush(&cpudata->hstate.hmctx);
-#endif
 
 	x86_restore_fpu(&cpudata->gxsave, vmx_xcr0_mask);
 	if (vmx_xcr0_mask != 0) {
@@ -2100,11 +2094,7 @@ vmx_vcpu_guest_fpu_leave(struct nvmm_cpu *vcpu)
 	}
 	x86_save_fpu(&cpudata->gxsave, vmx_xcr0_mask);
 
-#if defined(__NetBSD__)
-	x86_curthread_restore_fpu();
-#elif defined(__DragonFly__)
 	npxpop(&cpudata->hstate.hmctx);
-#endif
 }
 
 static void
@@ -2209,12 +2199,8 @@ vmx_htlb_flush(struct nvmm_machine *mach, struct vmx_cpudata *cpudata)
 	struct ept_desc ept_desc;
 	uint64_t machgen;
 
-#if defined(__NetBSD__)
-	machgen = ((struct vmx_machdata *)mach->machdata)->mach_htlb_gen;
-#elif defined(__DragonFly__)
 	clear_xinvltlb();
 	machgen = vmspace_pmap(mach->vm)->pm_invgen;
-#endif
 	if (__predict_true(machgen == cpudata->vcpu_htlb_gen)) {
 		return machgen;
 	}
@@ -2281,12 +2267,6 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 	vmx_vcpu_state_commit(vcpu);
 	comm->state_cached = 0;
 
-#ifndef __DragonFly__
-	if (__predict_false(vmx_vcpu_event_commit(vcpu) != 0)) {
-		vmx_vmcs_leave(vcpu);
-		return EINVAL;
-	}
-#endif
 
 	hcpu = os_curcpu_number();
 	launched = cpudata->vmcs_launched;
@@ -2302,14 +2282,12 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		cpudata->gtsc_want_update = true;
 		vcpu->hcpu_last = hcpu;
 
-#ifdef __DragonFly__
 		/*
 		 * XXX: We aren't tracking overloaded CPUs (multiple vCPUs
 		 *      scheduled on the same physical CPU) yet so there are
 		 *      currently no calls to pmap_del_cpu().
 		 */
 		pmap_add_cpu(mach->vm, hcpu);
-#endif
 	}
 
 	vmx_vcpu_guest_dbregs_enter(vcpu);
@@ -2332,7 +2310,6 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 		vmx_vcpu_guest_fpu_enter(vcpu);
 		machgen = vmx_htlb_flush(mach, cpudata);
 
-#ifdef __DragonFly__
 		/*
 		 * Check for pending host events (e.g., interrupt, AST)
 		 * to make the state safe to VM Entry.  This check must
@@ -2366,7 +2343,6 @@ vmx_vcpu_run(struct nvmm_machine *mach, struct nvmm_cpu *vcpu,
 			error = EINVAL;
 			break;
 		}
-#endif
 
 		x86_set_cr2(cpudata->gcr2);
 		if (launched) {
@@ -3214,23 +3190,6 @@ vmx_vcpu_configure(struct nvmm_cpu *vcpu, uint64_t op, void *data)
 
 /* -------------------------------------------------------------------------- */
 
-#ifdef __NetBSD__
-static void
-vmx_tlb_flush(struct pmap *pm)
-{
-	struct nvmm_machine *mach = os_pmap_mach(pm);
-	struct vmx_machdata *machdata = mach->machdata;
-
-	os_atomic_inc_64(&machdata->mach_htlb_gen);
-
-	/*
-	 * Send a dummy IPI to each CPU. The IPIs cause #VMEXITs. Afterwards the
-	 * VCPU loops will see that their 'vcpu_htlb_gen' is out of sync, and
-	 * will each flush their own TLB.
-	 */
-	os_ipi_kickall();
-}
-#endif
 
 static void
 vmx_machine_create(struct nvmm_machine *mach)
@@ -3239,13 +3198,7 @@ vmx_machine_create(struct nvmm_machine *mach)
 	struct vmx_machdata *machdata;
 
 	/* Transform into an EPT pmap. */
-#if defined(__NetBSD__)
-	pmap_ept_transform(pmap);
-	os_pmap_mach(pmap) = (void *)mach;
-	pmap->pm_tlb_flush = vmx_tlb_flush;
-#elif defined(__DragonFly__)
 	pmap_ept_transform(pmap, vmx_ept_has_ad ? 0 : PMAP_EMULATE_AD_BITS);
-#endif
 
 	machdata = os_mem_zalloc(sizeof(struct vmx_machdata));
 	mach->machdata = machdata;
@@ -3465,9 +3418,6 @@ vmx_ident(void)
 	} else {
 		vmx_ept_has_ad = false;
 	}
-#ifdef __NetBSD__
-	pmap_ept_has_ad = vmx_ept_has_ad;
-#endif
 	if (!(msr & IA32_VMX_EPT_VPID_UC) && !(msr & IA32_VMX_EPT_VPID_WB)) {
 		os_printf("nvmm: EPT UC/WB memory types not supported\n");
 		return false;
