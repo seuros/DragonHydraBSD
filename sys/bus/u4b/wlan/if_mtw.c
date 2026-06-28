@@ -75,17 +75,10 @@
 
 #ifdef MTW_DEBUG
 int mtw_debug;
-#if defined(__DragonFly__)
 static SYSCTL_NODE(_hw_usb, OID_AUTO, mtw, CTLFLAG_RW, 0,
     "USB mtw");
 SYSCTL_INT(_hw_usb_mtw, OID_AUTO, debug, CTLFLAG_RW, &mtw_debug, 0,
     "mtw debug level");
-#else
-static SYSCTL_NODE(_hw_usb, OID_AUTO, mtw, CTLFLAG_RW | CTLFLAG_MPSAFE, 0,
-    "USB mtw");
-SYSCTL_INT(_hw_usb_mtw, OID_AUTO, debug, CTLFLAG_RWTUN, &mtw_debug, 0,
-    "mtw debug level");
-#endif
 
 enum {
 	MTW_DEBUG_XMIT = 0x00000001,	  /* basic xmit operation */
@@ -648,9 +641,6 @@ mtw_attach(device_t self)
 
 	ic->ic_flags |= IEEE80211_F_DATAPAD;
 	ic->ic_flags_ext |= IEEE80211_FEXT_SWBMISS;
-#if !defined(__DragonFly__)
-	ic->ic_flags_ext |= IEEE80211_FEXT_SEQNO_OFFLOAD;
-#endif
 
 	mtw_getradiocaps(ic, IEEE80211_CHAN_MAX, &ic->ic_nchans,
 	    ic->ic_channels);
@@ -1125,11 +1115,7 @@ mtw_load_microcode(void *arg)
 	if (sc->asic_ver == 0x7612) {
 		fwname = "mtw7662u_rom_patchfw";
 
-#if defined(__DragonFly__)
 		firmware = firmware_get(fwname);
-#else
-		firmware = firmware_get_flags(fwname, FIRMWARE_GET_NOWARN);
-#endif
 		if (firmware == NULL) {
 			device_printf(sc->sc_dev,
 			    "failed firmware_get of file %s (error %d)\n",
@@ -1162,11 +1148,7 @@ mtw_load_microcode(void *arg)
 		dofs = 0x80000;
 	}
 	MTW_UNLOCK(sc);
-#if defined(__DragonFly__)
 	firmware = firmware_get(fwname);
-#else
-	firmware = firmware_get_flags(fwname, FIRMWARE_GET_NOWARN);
-#endif
 	MTW_LOCK(sc);
 
 	if (firmware == NULL) {
@@ -2200,11 +2182,7 @@ mtw_drain_fifo(void *arg)
 		if (stat & MTW_TXQ_OK) {
 			(*wstat)[MTW_SUCCESS]++;
 		} else {
-#if defined(__DragonFly__)
 			++sc->sc_ic.ic_oerrors;
-#else
-			counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 		}
 		/*
 		 * Check if there were retries, ie if the Tx success rate is
@@ -2228,11 +2206,7 @@ mtw_iter_func(void *arg, struct ieee80211_node *ni)
 {
 	struct mtw_softc *sc = arg;
 	MTW_LOCK(sc);
-#if defined(__DragonFly__)
 	int sum, success, retrycnt;
-#else
-	struct ieee80211_ratectl_tx_stats *txs = &sc->sc_txs;
-#endif
 	struct ieee80211vap *vap = ni->ni_vap;
 	struct mtw_node *rn = MTW_NODE(ni);
 	uint32_t sta[3];
@@ -2244,11 +2218,6 @@ mtw_iter_func(void *arg, struct ieee80211_node *ni)
 	    ni != vap->iv_bss)
 		goto fail;
 
-#if !defined(__DragonFly__)
-	txs->flags = IEEE80211_RATECTL_TX_STATS_NODE |
-	    IEEE80211_RATECTL_TX_STATS_RETRIES;
-	txs->ni = ni;
-#endif
 	if (sc->rvp_cnt <= 1 &&
 	    (vap->iv_opmode == IEEE80211_M_IBSS ||
 		vap->iv_opmode == IEEE80211_M_STA)) {
@@ -2265,7 +2234,6 @@ mtw_iter_func(void *arg, struct ieee80211_node *ni)
 		if_inc_counter(vap->iv_ifp, IFCOUNTER_OERRORS,
 		    le32toh(sta[0]) & 0xffff);
 
-#if defined(__DragonFly__)
 		retrycnt = (le32toh(sta[1]) >> 16);
 		success = (le32toh(sta[1]) & 0xffff);
 		sum = success + (le32toh(sta[0]) & 0xffff);
@@ -2273,16 +2241,6 @@ mtw_iter_func(void *arg, struct ieee80211_node *ni)
 		MTW_DPRINTF(sc, MTW_DEBUG_RATE,
 		    "retrycnt=%d success=%d failcnt=%d\n", retrycnt,
 		    success, le32toh(sta[0]) & 0xffff);
-#else
-		txs->nretries = (le32toh(sta[1]) >> 16);
-		txs->nsuccess = (le32toh(sta[1]) & 0xffff);
-		/* nretries??? */
-		txs->nframes = txs->nsuccess + (le32toh(sta[0]) & 0xffff);
-
-		MTW_DPRINTF(sc, MTW_DEBUG_RATE,
-		    "retrycnt=%d success=%d failcnt=%d\n", txs->nretries,
-		    txs->nsuccess, le32toh(sta[0]) & 0xffff);
-#endif
 	} else {
 		wstat = &(sc->wcid_stats[MTW_AID2WCID(ni->ni_associd)]);
 
@@ -2290,30 +2248,17 @@ mtw_iter_func(void *arg, struct ieee80211_node *ni)
 		    wstat > &(sc->wcid_stats[MTW_WCID_MAX]))
 			goto fail;
 
-#if defined(__DragonFly__)
 		retrycnt = (*wstat)[MTW_RETRY];
 		success = (*wstat)[MTW_SUCCESS];
 		sum = (*wstat)[MTW_TXCNT];
 		MTW_DPRINTF(sc, MTW_DEBUG_RATE,
 		    "wstat retrycnt=%d txcnt=%d success=%d\n", retrycnt,
 		    sum, success);
-#else
-		txs->nretries = (*wstat)[MTW_RETRY];
-		txs->nsuccess = (*wstat)[MTW_SUCCESS];
-		txs->nframes = (*wstat)[MTW_TXCNT];
-		MTW_DPRINTF(sc, MTW_DEBUG_RATE,
-		    "wstat retrycnt=%d txcnt=%d success=%d\n", txs->nretries,
-		    txs->nframes, txs->nsuccess);
-#endif
 
 		memset(wstat, 0, sizeof(*wstat));
 	}
 
-#if defined(__DragonFly__)
 	ieee80211_ratectl_tx_update(vap, ni, &sum, &success, &retrycnt);
-#else
-	ieee80211_ratectl_tx_update(vap, txs);
-#endif
 	ieee80211_ratectl_rate(ni, NULL, 0);
 
 	/* XXX TODO: methodize with MCS rates */
@@ -2462,9 +2407,6 @@ mtw_rx_frame(struct mtw_softc *sc, struct mbuf *m, uint32_t dmalen)
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211_frame *wh;
 	struct ieee80211_node *ni;
-#if !defined(__DragonFly__)
-	struct epoch_tracker et;
-#endif
 
 	struct mtw_rxwi *rxwi;
 	uint32_t flags;
@@ -2601,28 +2543,18 @@ mtw_rx_frame(struct mtw_softc *sc, struct mbuf *m, uint32_t dmalen)
 		}
 	}
 
-#if !defined(__DragonFly__)
-	NET_EPOCH_ENTER(et);
-#endif
 	if (ni != NULL) {
 		(void)ieee80211_input(ni, m, rssi, nf);
 		ieee80211_free_node(ni);
 	} else {
 		(void)ieee80211_input_all(ic, m, rssi, nf);
 	}
-#if !defined(__DragonFly__)
-	NET_EPOCH_EXIT(et);
-#endif
 
 	return;
 
 fail:
 	m_freem(m);
-#if defined(__DragonFly__)
 	++ic->ic_ierrors;
-#else
-	counter_u64_add(ic->ic_ierrors, 1);
-#endif
 }
 
 static void
@@ -2669,11 +2601,7 @@ mtw_bulk_rx_callback(struct usb_xfer *xfer, usb_error_t error)
 			    MTW_DEBUG_RECV | MTW_DEBUG_RECV_DESC |
 				MTW_DEBUG_USB,
 			    "could not allocate mbuf - idle with stall\n");
-#if defined(__DragonFly__)
 			++ic->ic_ierrors;
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			usbd_xfer_set_stall(xfer);
 			usbd_xfer_set_frames(xfer, 0);
 		} else {
@@ -2699,11 +2627,7 @@ mtw_bulk_rx_callback(struct usb_xfer *xfer, usb_error_t error)
 			if (error == USB_ERR_TIMEOUT)
 				device_printf(sc->sc_dev, "device timeout %s\n",
 				    __func__);
-#if defined(__DragonFly__)
 			++ic->ic_ierrors;
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto tr_setup;
 		}
 		if (sc->rx_m != NULL) {
@@ -3167,9 +3091,6 @@ mtw_tx(struct mtw_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 	data->ni = ni;
 	data->ridx = ridx;
 
-#if !defined(__DragonFly__)
-	ieee80211_output_seqno_assign(ni, -1, m);
-#endif
 
 	mtw_set_tx_desc(sc, data);
 
@@ -3430,9 +3351,6 @@ mtw_tx_param(struct mtw_softc *sc, struct mbuf *m, struct ieee80211_node *ni,
 			break;
 	data->ridx = ridx;
 
-#if !defined(__DragonFly__)
-	ieee80211_output_seqno_assign(ni, -1, m);
-#endif
 
 	mtw_set_tx_desc(sc, data);
 

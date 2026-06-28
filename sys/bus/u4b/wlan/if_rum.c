@@ -1096,11 +1096,7 @@ tr_setup:
 		DPRINTFN(11, "transfer error, %s\n",
 		    usbd_errstr(error));
 
-#if defined(__DragonFly__)
 		++sc->sc_ic.ic_oerrors;
-#else
-		counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 		data = usbd_xfer_get_priv(xfer);
 		if (data != NULL) {
 			rum_tx_free(data, error);
@@ -1146,11 +1142,7 @@ rum_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 		if (len < (int)(RT2573_RX_DESC_SIZE + IEEE80211_MIN_LEN)) {
 			DPRINTF("%s: xfer too short %d\n",
 			    device_get_nameunit(sc->sc_dev), len);
-#if defined(__DragonFly__)
 			++ic->ic_ierrors;
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto tr_setup;
 		}
 
@@ -1168,11 +1160,7 @@ rum_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 		         * filled RUM_TXRX_CSR2:
 		         */
 			DPRINTFN(5, "PHY or CRC error\n");
-#if defined(__DragonFly__)
 			++ic->ic_ierrors;
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto tr_setup;
 		}
 		if ((flags & RT2573_RX_DEC_MASK) != RT2573_RX_DEC_OK) {
@@ -1187,22 +1175,14 @@ rum_bulk_read_callback(struct usb_xfer *xfer, usb_error_t error)
 				DPRINTFN(5, "Key error\n");
 				break;
 			}
-#if defined(__DragonFly__)
 			++ic->ic_ierrors;
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto tr_setup;
 		}
 
 		m = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL) {
 			DPRINTF("could not allocate mbuf\n");
-#if defined(__DragonFly__)
 			++ic->ic_ierrors;
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto tr_setup;
 		}
 		usbd_copy_out(pc, RT2573_RX_DESC_SIZE,

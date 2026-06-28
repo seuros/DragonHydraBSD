@@ -43,13 +43,6 @@ __FBSDID("$FreeBSD$");
 #include <sys/endian.h>
 #include <sys/linker.h>
 #include <sys/firmware.h>
-#if defined(__DragonFly__)
-#else
-#include <sys/kdb.h>
-
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 
 #include <sys/rman.h>
 
@@ -516,21 +509,11 @@ urtwn_attach(device_t self)
 		sc->sc_debug = debug;
 #endif
 
-#if defined(__DragonFly__)
 	lockinit(&sc->sc_mtx, device_get_nameunit(self), 0, 0);
-#else
-	mtx_init(&sc->sc_mtx, device_get_nameunit(self),
-	    MTX_NETWORK_LOCK, MTX_DEF);
-#endif
 	URTWN_CMDQ_LOCK_INIT(sc);
 	URTWN_NT_LOCK_INIT(sc);
-#if defined(__DragonFly__)
 	callout_init(&sc->sc_calib_to);
 	callout_init(&sc->sc_watchdog_ch);
-#else
-	callout_init(&sc->sc_calib_to, 0);
-	callout_init(&sc->sc_watchdog_ch, 0);
-#endif
 	mbufq_init(&sc->sc_snd, ifqmaxlen);
 
 	sc->sc_iface_index = URTWN_IFACE_INDEX;
@@ -903,11 +886,7 @@ urtwn_rx_copy_to_mbuf(struct urtwn_softc *sc, struct r92c_rx_stat *stat,
 
 	return (m);
 fail:
-#if defined(__DragonFly__)
 	/* unimplemented */
-#else
-	counter_u64_add(ic->ic_ierrors, 1);
-#endif
 	return (NULL);
 }
 
@@ -924,11 +903,7 @@ urtwn_report_intr(struct usb_xfer *xfer, struct urtwn_data *data)
 	usbd_xfer_status(xfer, &len, NULL, NULL, NULL);
 
 	if (len < sizeof(*stat)) {
-#if defined(__DragonFly__)
 		/* unimplemented */
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		return (NULL);
 	}
 
@@ -1206,11 +1181,7 @@ tr_setup:
 		}
 		if (error != USB_ERR_CANCELLED) {
 			usbd_xfer_set_stall(xfer);
-#if defined(__DragonFly__)
 			/* unimplemented */
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto tr_setup;
 		}
 		break;
@@ -2737,11 +2708,7 @@ urtwn_watchdog(void *arg)
 	if (sc->sc_txtimer > 0) {
 		if (--sc->sc_txtimer == 0) {
 			device_printf(sc->sc_dev, "device timeout\n");
-#if defined(__DragonFly__)
 			/* unimplemented */
-#else
-			counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 			return;
 		}
 		callout_reset(&sc->sc_watchdog_ch, hz, urtwn_watchdog, sc);
@@ -4897,11 +4864,7 @@ urtwn_set_multi(struct urtwn_softc *sc)
 		mfilt[0] = mfilt[1] = 0;
 		TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 			ifp = vap->iv_ifp;
-#if defined(__DragonFly__)
 			/* XXX not implemented */
-#else
-			if_maddr_rlock(ifp);
-#endif
 			TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 				caddr_t dl;
 				uint8_t pos;
@@ -4912,11 +4875,7 @@ urtwn_set_multi(struct urtwn_softc *sc)
 
 				mfilt[pos / 32] |= (1 << (pos % 32));
 			}
-#if defined(__DragonFly__)
 			/* XXX not implemented */
-#else
-			if_maddr_runlock(ifp);
-#endif
 		}
 	} else
 		mfilt[0] = mfilt[1] = ~0;
@@ -5603,8 +5562,4 @@ MODULE_DEPEND(urtwn, wlan, 1, 1, 1);
 MODULE_DEPEND(urtwn, firmware, 1, 1, 1);
 #endif
 MODULE_VERSION(urtwn, 1);
-#if defined(__DragonFly__)
 /* USB_PNP_HOST_INFO() not implemented */
-#else
-USB_PNP_HOST_INFO(urtwn_devs);
-#endif

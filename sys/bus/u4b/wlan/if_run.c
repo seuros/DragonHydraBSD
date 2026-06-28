@@ -709,13 +709,8 @@ run_attach(device_t self)
 	if (USB_GET_DRIVER_INFO(uaa) != RUN_EJECT)
 		sc->sc_flags |= RUN_FLAG_FWLOAD_NEEDED;
 
-#if defined(__DragonFly__)
 	lockinit(&sc->sc_lock, device_get_nameunit(sc->sc_dev),
 	    0, LK_CANRECURSE);
-#else
-	mtx_init(&sc->sc_mtx, device_get_nameunit(sc->sc_dev),
-	    MTX_NETWORK_LOCK, MTX_DEF);
-#endif
 	mbufq_init(&sc->sc_snd, ifqmaxlen);
 
 	iface_index = RT2860_IFACE_INDEX;
@@ -881,11 +876,7 @@ run_detach(device_t self)
 		ieee80211_ifdetach(ic);
 	}
 
-#if defined(__DragonFly__)
 	lockuninit(&sc->sc_lock);
-#else
-	mtx_destroy(&sc->sc_mtx);
-#endif
 
 	return (0);
 }
@@ -2539,11 +2530,7 @@ run_drain_fifo(void *arg)
 		if (stat & RT2860_TXQ_OK) {
 			(*wstat)[RUN_SUCCESS]++;
 		} else {
-#if defined(__DragonFly__)
 			++sc->sc_ic.ic_oerrors;
-#else
-			counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 		}
 		/*
 		 * Check if there were retries, ie if the Tx success rate is
@@ -2782,11 +2769,7 @@ run_rx_frame(struct run_softc *sc, struct mbuf *m, uint32_t dmalen)
 		rxwisize += sizeof(uint32_t);
 	if (__predict_false(len > dmalen)) {
 		m_freem(m);
-#if defined(__DragonFly__)
 		++ic->ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		DPRINTF("bad RXWI length %u > %u\n", len, dmalen);
 		return;
 	}
@@ -2796,11 +2779,7 @@ run_rx_frame(struct run_softc *sc, struct mbuf *m, uint32_t dmalen)
 
 	if (__predict_false(flags & (RT2860_RX_CRCERR | RT2860_RX_ICVERR))) {
 		m_freem(m);
-#if defined(__DragonFly__)
 		++ic->ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		DPRINTF("%s error.\n", (flags & RT2860_RX_CRCERR)?"CRC":"ICV");
 		return;
 	}
@@ -2829,11 +2808,7 @@ run_rx_frame(struct run_softc *sc, struct mbuf *m, uint32_t dmalen)
 			ieee80211_notify_michael_failure(ni->ni_vap, wh,
 			    rxwi->keyidx);
 		m_freem(m);
-#if defined(__DragonFly__)
 		++ic->ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		DPRINTF("MIC error. Someone is lying.\n");
 		return;
 	}
@@ -2935,11 +2910,7 @@ tr_setup:
 		}
 		if (sc->rx_m == NULL) {
 			DPRINTF("could not allocate mbuf - idle with stall\n");
-#if defined(__DragonFly__)
 			++ic->ic_ierrors;
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			usbd_xfer_set_stall(xfer);
 			usbd_xfer_set_frames(xfer, 0);
 		} else {
@@ -2961,11 +2932,7 @@ tr_setup:
 			usbd_xfer_set_stall(xfer);
 			if (error == USB_ERR_TIMEOUT)
 				device_printf(sc->sc_dev, "device timeout\n");
-#if defined(__DragonFly__)
 			++ic->ic_ierrors;
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto tr_setup;
 		}
 		if (sc->rx_m != NULL) {
@@ -3013,11 +2980,7 @@ tr_setup:
 		m0 = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (__predict_false(m0 == NULL)) {
 			DPRINTF("could not allocate mbuf\n");
-#if defined(__DragonFly__)
 			++ic->ic_ierrors;
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			break;
 		}
 		m_copydata(m, 4 /* skip 32-bit DMA-len header */,

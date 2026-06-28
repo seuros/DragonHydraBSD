@@ -178,11 +178,7 @@ struct urtwn_softc {
 	void				(*sc_power_off)(struct urtwn_softc *);
 
 	struct ieee80211_node		*node_list[R88E_MACID_MAX + 1];
-#if defined(__DragonFly__)
 	struct lock			nt_mtx;
-#else
-	struct mtx			nt_mtx;
-#endif
 
 	uint8_t				board_type;
 	uint8_t				regulatory;
@@ -213,19 +209,11 @@ struct urtwn_softc {
 
 	struct callout			sc_calib_to;
 	struct callout			sc_watchdog_ch;
-#if defined(__DragonFly__)
 	struct lock			sc_mtx;
-#else
-	struct mtx			sc_mtx;
-#endif
 	uint32_t			keys_bmap;
 
 	struct urtwn_cmdq		cmdq[URTWN_CMDQ_SIZE];
-#if defined(__DragonFly__)
 	struct lock			cmdq_mtx;
-#else
-	struct mtx			cmdq_mtx;
-#endif
 	struct task			cmdq_task;
 	uint8_t				cmdq_first;
 	uint8_t				cmdq_last;
@@ -237,7 +225,6 @@ struct urtwn_softc {
 	struct urtwn_tx_radiotap_header	sc_txtap;
 };
 
-#if defined(__DragonFly__)
 
 #define	URTWN_LOCK(sc)			lockmgr(&(sc)->sc_mtx, LK_EXCLUSIVE)
 #define	URTWN_UNLOCK(sc)		lockmgr(&(sc)->sc_mtx, LK_RELEASE)
@@ -253,22 +240,3 @@ struct urtwn_softc {
 #define URTWN_NT_UNLOCK(sc)		lockmgr(&(sc)->nt_mtx, LK_RELEASE)
 #define URTWN_NT_LOCK_DESTROY(sc)	lockuninit(&(sc)->nt_mtx)
 
-#else
-
-#define	URTWN_LOCK(sc)			mtx_lock(&(sc)->sc_mtx)
-#define	URTWN_UNLOCK(sc)		mtx_unlock(&(sc)->sc_mtx)
-#define	URTWN_ASSERT_LOCKED(sc)		mtx_assert(&(sc)->sc_mtx, MA_OWNED)
-
-#define URTWN_CMDQ_LOCK_INIT(sc) \
-	mtx_init(&(sc)->cmdq_mtx, "cmdq lock", NULL, MTX_DEF)
-#define URTWN_CMDQ_LOCK(sc)		mtx_lock(&(sc)->cmdq_mtx)
-#define URTWN_CMDQ_UNLOCK(sc)		mtx_unlock(&(sc)->cmdq_mtx)
-#define URTWN_CMDQ_LOCK_DESTROY(sc)	mtx_destroy(&(sc)->cmdq_mtx)
-
-#define URTWN_NT_LOCK_INIT(sc) \
-	mtx_init(&(sc)->nt_mtx, "node table lock", NULL, MTX_DEF)
-#define URTWN_NT_LOCK(sc)		mtx_lock(&(sc)->nt_mtx)
-#define URTWN_NT_UNLOCK(sc)		mtx_unlock(&(sc)->nt_mtx)
-#define URTWN_NT_LOCK_DESTROY(sc)	mtx_destroy(&(sc)->nt_mtx)
-
-#endif

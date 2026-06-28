@@ -270,9 +270,6 @@ struct mtw_softc {
 	device_t			sc_dev;
   int                             sc_idx;
 	struct ieee80211com		sc_ic;
-#if !defined(__DragonFly__)
-        struct ieee80211_ratectl_tx_stats sc_txs;
-#endif
 	int				(*sc_newstate)(struct ieee80211com *,
 					    enum ieee80211_state, int);
 	int				(*sc_srom_read)(struct mtw_softc *,
