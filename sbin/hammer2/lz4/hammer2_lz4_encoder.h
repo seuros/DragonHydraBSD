@@ -268,6 +268,24 @@ _last_literals:
     return (int) (((char*)op)-dest);
 }
 
+/*
+ * Switch to 64k-optimized hash settings for the next function.
+ * U16 entries with twice the slots at half the width.
+ */
+#undef HASHLOG
+#undef CURRENT_H_TYPE
+#undef CURRENTBASE
+#undef HASHTABLE_NBCELLS
+#undef LZ4_HASH
+#undef LZ4_HASHVALUE
+
+#define HASHLOG (MEMORY_USAGE-1)
+#define CURRENT_H_TYPE U16
+#define CURRENTBASE(base) BYTE* base = ip
+#define HASHTABLE_NBCELLS  (1U<<HASHLOG)
+#define LZ4_HASH(i)        (((i) * 2654435761U) >> ((MINMATCH*8)-HASHLOG))
+#define LZ4_HASHVALUE(p)   LZ4_HASH(A32(p))
+
 int
 LZ4_compress64k_heap_limitedOutput(
                  void* ctx,
