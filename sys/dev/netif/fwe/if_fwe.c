@@ -53,20 +53,12 @@
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <net/if_arp.h>
-#ifdef __DragonFly__
 #include <net/ifq_var.h>
 #include <net/if_poll.h>
 #include <net/vlan/if_vlan_var.h>
 #include <bus/firewire/firewire.h>
 #include <bus/firewire/firewirereg.h>
 #include "if_fwevar.h"
-#else
-#include <net/if_vlan_var.h>
-
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/firewirereg.h>
-#include <dev/firewire/if_fwevar.h>
-#endif
 
 #define FWEDEBUG	if (fwedebug) if_printf
 #define TX_MAX_QUEUE	(FWMAXQUEUE - 1)

@@ -2360,11 +2360,9 @@ kprintf("ORB %08x %08x %08x %08x\n", ntohl(ocb->orb[4]), ntohl(ocb->orb[5]), nto
 	case XPT_CALC_GEOMETRY:
 	{
 		struct ccb_calc_geometry *ccg;
-#if defined(__DragonFly__) || __FreeBSD_version < 501100
 		u_int32_t size_mb;
 		u_int32_t secs_per_cylinder;
 		int extended = 1;
-#endif
 
 		ccg = &ccb->ccg;
 		if (ccg->block_size == 0) {
@@ -2381,7 +2379,6 @@ SBP_DEBUG(1)
 			(uintmax_t)ccg->volume_size);
 END_DEBUG
 
-#if defined(__DragonFly__) || __FreeBSD_version < 501100
 		size_mb = ccg->volume_size
 			/ ((1024L * 1024L) / ccg->block_size);
 
@@ -2395,9 +2392,6 @@ END_DEBUG
 		secs_per_cylinder = ccg->heads * ccg->secs_per_track;
 		ccg->cylinders = ccg->volume_size / secs_per_cylinder;
 		ccb->ccb_h.status = CAM_REQ_CMP;
-#else
-		cam_calc_geometry(ccg, /*extended*/1);
-#endif
 		xpt_done(ccb);
 		break;
 	}

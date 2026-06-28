@@ -772,9 +772,7 @@ setup:
     /*
      * Allocate and set up our interrupt.
      */
-#ifdef __DragonFly__ /* DragonFly specific MSI setup */
     use_msi = (intr == ciss_perf_msi_intr);
-#endif
     sc->ciss_irq_rid[0] = 0;
     sc->ciss_irq_type = pci_alloc_1intr(sc->ciss_dev, use_msi,
 	&sc->ciss_irq_rid[0], &irq_flags);

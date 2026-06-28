@@ -38,11 +38,7 @@
 
 #include <sys/param.h>
 
-#if defined(__DragonFly__) || defined(_BOOT)
 #include "dcons.h"
-#else
-#include <dev/dcons/dcons.h>
-#endif
 
 int
 dcons_ischar(struct dcons_softc *dc)

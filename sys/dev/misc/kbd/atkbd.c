@@ -383,10 +383,8 @@ atkbd_probe(int unit, void *arg, int flags)
 #ifdef EVDEV_SUPPORT
   #if defined(__FreeBSD__)
     #define KBD_EVDEV_REGISTER(evdev) evdev_register_mtx(evdev, &Giant)
-  #elif defined(__DragonFly__)
-    #define KBD_EVDEV_REGISTER(evdev) evdev_register(evdev)
   #else
-    #error "FreeBSD or DragonFly expected"
+    #define KBD_EVDEV_REGISTER(evdev) evdev_register(evdev)
   #endif
 #endif /* EVDEV_SUPPORT */
 
@@ -1250,24 +1248,9 @@ atkbd_ev_event(struct evdev_dev *evdev, uint16_t type, uint16_t code,
 #if defined(__FreeBSD__)
 		mtx_lock(&Giant);
 #endif
-#if defined(__DragonFly__) && 0
-		if(!lockmgr(&kbd->kb_lock, LK_EXCLUSIVE)) {
-			/* save original flag */
-			int orig_is_polled = KBD_IS_POLLED(kbd);
-			/* set state to polling */
-			KBD_POLL(kbd);
-#endif
 		kbd_ev_event(kbd, type, code, value);
 #if defined(__FreeBSD__)
 		mtx_unlock(&Giant);
-#endif
-#if defined(__DragonFly__) && 0
-			/* restore original state if not polling */
-			if(orig_is_polled == 0)
-				KBD_UNPOLL(kbd);
-
-			lockmgr(&kbd->kb_lock, LK_RELEASE);
-		}
 #endif
 	}
 }

@@ -36,11 +36,7 @@
  * NVME softc and structural definitions
  */
 
-#if defined(__DragonFly__)
 #include "nvme_dragonfly.h"
-#else
-#error "build for OS unknown"
-#endif
 #include "nvme_fw.h"
 #include "nvme_log.h"
 #include "nvme_ident.h"

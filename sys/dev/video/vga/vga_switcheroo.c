@@ -1221,7 +1221,6 @@ out:
 	return (error);
 }
 
-#ifdef __DragonFly__
 int
 vga_switcheroo_force_migd(void)
 {
@@ -1236,7 +1235,6 @@ vga_switcheroo_force_migd(void)
 
 	return (ret);
 }
-#endif
 
 MODULE_VERSION(vga_switcheroo, 1);
 DEV_MODULE(vga_switcheroo, vga_switcheroo_handler, NULL);

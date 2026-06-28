@@ -286,10 +286,6 @@ vtscsi_attach(device_t dev)
 
 	if (virtio_with_feature(dev, VIRTIO_RING_F_INDIRECT_DESC))
 		sc->vtscsi_flags |= VTSCSI_FLAG_INDIRECT;
-#ifndef __DragonFly__ /* XXX swildner */
-	if (virtio_with_feature(dev, VIRTIO_SCSI_F_INOUT))
-		sc->vtscsi_flags |= VTSCSI_FLAG_BIDIRECTIONAL;
-#endif
 	if (virtio_with_feature(dev, VIRTIO_SCSI_F_HOTPLUG))
 		sc->vtscsi_flags |= VTSCSI_FLAG_HOTPLUG;
 
@@ -844,14 +840,6 @@ vtscsi_cam_scsi_io(struct vtscsi_softc *sc, struct cam_sim *sim,
 		goto done;
 	}
 
-#ifndef __DragonFly__ /* XXX swildner */
-	if ((ccbh->flags & CAM_DIR_MASK) == CAM_DIR_BOTH &&
-	    (sc->vtscsi_flags & VTSCSI_FLAG_BIDIRECTIONAL) == 0) {
-		error = EINVAL;
-		ccbh->status = CAM_REQ_INVALID;
-		goto done;
-	}
-#endif
 
 	error = vtscsi_start_scsi_cmd(sc, ccb);
 

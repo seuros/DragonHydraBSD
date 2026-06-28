@@ -63,7 +63,6 @@ struct mtop {
 #define MTCACHE		8	/* enable controller cache */
 #define MTNOCACHE	9	/* disable controller cache */
 
-#if defined(__DragonFly__)
 /* Set block size for device. If device is a variable size dev		*/
 /* a non zero parameter will change the device to a fixed block size	*/
 /* device with block size set to that of the parameter passed in.	*/
@@ -106,7 +105,6 @@ struct mtop {
 #define	MTIO_DSREG_UNL	45	/* Unloading */
 #define	MTIO_DSREG_LD	46	/* Loading */
 
-#endif	/* __DragonFly__ */
 
 /* structure for MTIOCGET - mag tape get status command */
 
@@ -123,7 +121,6 @@ struct mtget {
 	 * more accurate count.
 	 */
 	short	mt_resid;	/* residual count */
-#if defined (__DragonFly__)
 	daddr_t mt_blksiz;	/* presently operating blocksize */
 	daddr_t mt_density;	/* presently operating density */
 	u_int32_t mt_comp;	/* presently operating compression */
@@ -141,7 +138,6 @@ struct mtget {
 	u_int32_t mt_comp2;	/* compression type for mode 2 */
 	u_int32_t mt_comp3;	/* compression type for mode 3 */
 /* end not yet implemented */
-#endif
 	daddr_t	mt_fileno;	/* relative file number of current position */
 	daddr_t	mt_blkno;	/* relative block number of current position */
 };

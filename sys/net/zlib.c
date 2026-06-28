@@ -25,7 +25,7 @@
 #define NO_ZCFUNCS
 #define MY_ZCALLOC
 
-#if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(_KERNEL)
+#if defined(_KERNEL)
 #define inflate	inflate_ppp	/* FreeBSD already has an inflate :-( */
 #endif
 

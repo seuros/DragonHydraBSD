@@ -81,25 +81,10 @@ typedef unsigned char   U8;
 typedef signed   short  S16;
 typedef unsigned short  U16;
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 
 typedef int32_t  S32;
 typedef uint32_t U32;
 
-#else
-
-#if defined(unix) || defined(__arm) || defined(ALPHA) || defined(__PPC__) || defined(__ppc)
-
-    typedef signed   int   S32;
-    typedef unsigned int   U32;
-
-#else
-
-    typedef signed   long  S32;
-    typedef unsigned long  U32;
-
-#endif
-#endif
 
 typedef struct _S64
 {

@@ -16,11 +16,7 @@
  * $OpenBSD: sili.c,v 1.147 2009/02/16 21:19:07 miod Exp $
  */
 
-#if defined(__DragonFly__)
 #include "sili_dragonfly.h"
-#else
-#error "build for OS unknown"
-#endif
 #include "pmreg.h"
 #include "atascsi.h"
 

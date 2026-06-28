@@ -46,7 +46,7 @@
 
 #define NCR_GETCC_WITHMSG
 
-#if (defined(__DragonFly__) || defined (__FreeBSD__)) && defined(_KERNEL)
+#if defined(_KERNEL)
 #include "opt_ncr.h"
 #endif
 

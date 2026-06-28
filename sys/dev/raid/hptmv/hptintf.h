@@ -162,20 +162,7 @@ typedef DWORD DEVICEID;
  * It would be better if ioctl code are the same on different platforms,
  * but we must not conflict with system defined ioctl code.
  ************************************************************************/
-#if defined(LINUX) || defined(__DragonFly__)
 #define HPT_CTL_CODE(x) (x+0xFF00)
-#elif defined(_MS_WIN32_) || defined(WIN32)
-
-#ifndef CTL_CODE
-#define CTL_CODE( DeviceType, Function, Method, Access ) \
-			(((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
-#endif
-#define HPT_CTL_CODE(x) CTL_CODE(0x370, 0x900+(x), 0, 0)
-#define HPT_CTL_CODE_WIN32_TO_I960(x) ((((x) & 0xffff)>>2)-0x900)
-
-#else
-#define HPT_CTL_CODE(x) (x)
-#endif
 
 #define HPT_IOCTL_GET_VERSION               HPT_CTL_CODE(0)
 #define HPT_IOCTL_GET_CONTROLLER_COUNT      HPT_CTL_CODE(1)

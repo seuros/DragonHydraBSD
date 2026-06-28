@@ -55,10 +55,8 @@
 #define DEVICE_NAME	"Elastic Network Adapter (ENA)"
 #define DEVICE_DESC	"ENA adapter"
 
-#ifdef __DragonFly__
 #define SBT_1S	((__int64_t)1 << 32)	/* XXX this should not be needed */
 typedef struct ifnet * if_t;
-#endif
 
 /* Calculate DMA mask - width for ena cannot exceed 48, so it is safe */
 #define ENA_DMA_BIT_MASK(x)		((1ULL << (x)) - 1ULL)

@@ -535,11 +535,7 @@ dcons_detach(int port)
 	/* XXX
 	 * must wait until all device are closed.
 	 */
-#ifdef __DragonFly__
 	tsleep((void *)dc, 0, "dcodtc", hz/4);
-#else
-	tsleep((void *)dc, PWAIT, "dcodtc", hz/4);
-#endif
 	lwkt_reltoken(&tp->t_token);
 	destroy_dev(dc->dev);
 

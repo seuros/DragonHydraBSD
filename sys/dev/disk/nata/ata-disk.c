@@ -156,11 +156,7 @@ ad_attach(device_t dev)
 
     disk_setdiskinfo(&adp->disk, &info);
 
-#if defined(__DragonFly__)
     callout_init_mp(&atadev->spindown_timer);
-#else
-    callout_init(&atadev->spindown_timer, 1);
-#endif
     return 0;
 }
 

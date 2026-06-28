@@ -69,9 +69,7 @@
  *
  */
 
-#if defined(__DragonFly__) || defined(__bsdi__) || defined(__FreeBSD__)
 #define assert(x)
-#endif
 
 
 /*** SHA-256/384/512 Machine Architecture Definitions *****************/

@@ -280,10 +280,6 @@ DRIVER_MODULE_ORDERED(amdtemp, hostb, amdtemp_driver,
 		      &amdtemp_devclass, NULL, NULL, SI_ORDER_LATER);
 MODULE_VERSION(amdtemp, 1);
 MODULE_DEPEND(amdtemp, amdsmn, 1, 1, 1);
-#if !defined(__DragonFly__)
-MODULE_PNP_INFO("U16:vendor;U16:device", pci, amdtemp, amdtemp_products,
-    nitems(amdtemp_products));
-#endif
 
 static bool
 amdtemp_match(device_t dev, const struct amdtemp_product **product_out)

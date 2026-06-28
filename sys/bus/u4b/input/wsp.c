@@ -1404,6 +1404,3 @@ static devclass_t wsp_devclass;
 DRIVER_MODULE(wsp, uhub, wsp_driver, wsp_devclass, NULL, NULL);
 MODULE_DEPEND(wsp, usb, 1, 1, 1);
 MODULE_VERSION(wsp, 1);
-#ifndef __DragonFly__
-USB_PNP_HOST_INFO(wsp_devs);
-#endif

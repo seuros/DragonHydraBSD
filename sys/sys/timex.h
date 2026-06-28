@@ -222,7 +222,6 @@ struct timex {
 	long	stbcnt;		/* stability limit exceeded (ro) */
 };
 
-#ifdef __DragonFly__
 
 #ifdef _KERNEL
 
@@ -238,6 +237,5 @@ int	ntp_gettime (struct ntptimeval *);
 __END_DECLS
 #endif /* _KERNEL */
 
-#endif /* __DragonFly__ */
 
 #endif /* !_SYS_TIMEX_H_ */

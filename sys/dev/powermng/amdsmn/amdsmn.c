@@ -186,10 +186,6 @@ static devclass_t amdsmn_devclass;
 DRIVER_MODULE_ORDERED(amdsmn, hostb, amdsmn_driver,
 			&amdsmn_devclass, NULL, NULL, SI_ORDER_EARLIER);
 MODULE_VERSION(amdsmn, 1);
-#if !defined(__DragonFly__)
-MODULE_PNP_INFO("U16:vendor;U16:device", pci, amdsmn, amdsmn_ids,
-    nitems(amdsmn_ids));
-#endif
 
 static bool
 amdsmn_match(device_t parent, const struct pciid **pciid_out)

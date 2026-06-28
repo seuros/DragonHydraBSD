@@ -46,24 +46,15 @@
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
-#if !defined(__DragonFly__)
-#include <vm/vm_prot.h>
-#endif
 #include <vm/vm_page.h>
 #include <vm/vm_object.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_zone.h>
-#if defined(__DragonFly__)
 #include <vm/vnode_pager.h>
-#endif
 #include <vm/vm_extern.h>
 
 #include <sys/buf2.h>
 
-#if !defined(__DragonFly__)
-#include <miscfs/specfs/specdev.h>
-#include <miscfs/genfs/genfs.h>
-#endif
 
 #include <sys/unistd.h> /* for pathconf(2) constants */
 
@@ -89,12 +80,9 @@ static int	hpfs_lookup (struct vop_old_lookup_args *ap);
 static int	hpfs_create (struct vop_old_create_args *);
 static int	hpfs_remove (struct vop_old_remove_args *);
 static int	hpfs_bmap (struct vop_bmap_args *ap);
-#if defined(__DragonFly__)
 static int	hpfs_fsync (struct vop_fsync_args *ap);
-#endif
 static int	hpfs_pathconf (struct vop_pathconf_args *ap);
 
-#if defined(__DragonFly__)
 
 /*
  * hpfs_fsync(struct vnode *a_vp, int a_waitfor)
@@ -124,7 +112,6 @@ loop:
 	return hpfs_update(VTOHP(vp));
 }
 
-#endif
 
 /*
  * hpfs_ioctl(struct vnode *a_vp, u_long a_command, caddr_t a_data,
@@ -448,11 +435,7 @@ hpfs_getattr(struct vop_getattr_args *ap)
 
 	dprintf(("hpfs_getattr(0x%x):\n", hp->h_no));
 
-#if defined(__DragonFly__)
 	vap->va_fsid = devid_from_dev(hp->h_dev);
-#else /* defined(__NetBSD__) */
-	vap->va_fsid = ip->i_dev;
-#endif
 	vap->va_fileid = hp->h_no;
 	vap->va_mode = hp->h_mode;
 	vap->va_nlink = 1;
@@ -557,21 +540,15 @@ hpfs_setattr(struct vop_setattr_args *ap)
 		}
 
 		if (vap->va_size < hp->h_fn.fn_size) {
-#if defined(__DragonFly__)
 			error = vtruncbuf(vp, vap->va_size, DEV_BSIZE);
 			if (error)
 				return (error);
-#else /* defined(__NetBSD__) */
-#error Need alternation for vtruncbuf()
-#endif
 			error = hpfs_truncate(hp, vap->va_size);
 			if (error)
 				return (error);
 
 		} else if (vap->va_size > hp->h_fn.fn_size) {
-#if defined(__DragonFly__)
 			vnode_pager_setsize(vp, vap->va_size);
-#endif
 			error = hpfs_extend(hp, vap->va_size);
 			if (error)
 				return (error);
@@ -613,11 +590,7 @@ hpfs_inactive(struct vop_inactive_args *ap)
 		vprint("hpfs_inactive: pushing active", vp);
 
 	if (hp->h_flag & H_INVAL) {
-#if defined(__DragonFly__)
 		vrecycle(vp);
-#else /* defined(__NetBSD__) */
-		vgone(vp);
-#endif
 		return (0);
 	}
 	return (0);

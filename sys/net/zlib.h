@@ -510,7 +510,7 @@ extern int EXPORT inflateInit OF((z_streamp strm));
    done by inflate().
 */
 
-#if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(_KERNEL)
+#if defined(_KERNEL)
 #define inflate       inflate_ppp     /* FreeBSD already has an inflate :-( */
 #endif
 
