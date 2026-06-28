@@ -39,12 +39,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/endian.h>
 #include <sys/firmware.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/rman.h>
 
 #include <net/bpf.h>
@@ -241,12 +236,7 @@ rt2860_attach(device_t dev, int id)
 	sc->sc_dev = dev;
 	sc->sc_debug = 0;
 
-#if defined(__DragonFly__)
 	lockinit(&sc->sc_mtx, device_get_nameunit(dev), 0, LK_CANRECURSE);
-#else
-	mtx_init(&sc->sc_mtx, device_get_nameunit(dev), MTX_NETWORK_LOCK,
-	    MTX_DEF | MTX_RECURSE);
-#endif
 
 	callout_init_mtx(&sc->watchdog_ch, &sc->sc_mtx, 0);
 	mbufq_init(&sc->sc_snd, ifqmaxlen);
@@ -273,17 +263,10 @@ rt2860_attach(device_t dev, int id)
 
 	/* retrieve RF rev. no and various other things from EEPROM */
 	rt2860_read_eeprom(sc, ic->ic_macaddr);
-#if defined(__DragonFly__)
 	device_printf(sc->sc_dev, "MAC/BBP RT%X (rev 0x%04X), "
 	    "RF %s (MIMO %dT%dR), address %s\n",
 	    sc->mac_ver, sc->mac_rev, rt2860_get_rf(sc->rf_rev),
 	    sc->ntxchains, sc->nrxchains, ether_sprintf(ic->ic_macaddr));
-#else
-	device_printf(sc->sc_dev, "MAC/BBP RT%X (rev 0x%04X), "
-	    "RF %s (MIMO %dT%dR), address %6D\n",
-	    sc->mac_ver, sc->mac_rev, rt2860_get_rf(sc->rf_rev),
-	    sc->ntxchains, sc->nrxchains, ic->ic_macaddr, ":");
-#endif
 
 	/*
 	 * Allocate Tx (4 EDCAs + HCCA + Mgt) and Rx rings.
@@ -376,11 +359,7 @@ rt2860_attach(device_t dev, int id)
 fail3:	rt2860_free_rx_ring(sc, &sc->rxq);
 fail2:	while (--qid >= 0)
 		rt2860_free_tx_ring(sc, &sc->txq[qid]);
-#if defined(__DragonFly__)
 fail1:	lockuninit(&sc->sc_mtx);
-#else
-fail1:	mtx_destroy(&sc->sc_mtx);
-#endif
 	return error;
 }
 
@@ -402,11 +381,7 @@ rt2860_detach(void *xsc)
 	rt2860_free_rx_ring(sc, &sc->rxq);
 	rt2860_free_tx_pool(sc);
 
-#if defined(__DragonFly__)
 	lockuninit(&sc->sc_mtx);
-#else
-	mtx_destroy(&sc->sc_mtx);
-#endif
 
 	return 0;
 }
@@ -531,15 +506,9 @@ rt2860_alloc_tx_ring(struct rt2860_softc *sc, struct rt2860_tx_ring *ring)
 
 	size = RT2860_TX_RING_COUNT * sizeof (struct rt2860_txd);
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 16, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    size, 1, size, 0, &ring->desc_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 16, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    size, 1, size, 0, NULL, NULL, &ring->desc_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create desc DMA tag\n");
 		goto fail;
@@ -644,15 +613,9 @@ rt2860_alloc_tx_pool(struct rt2860_softc *sc)
 	/* init data_pool early in case of failure.. */
 	SLIST_INIT(&sc->data_pool);
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    size, 1, size, 0, &sc->txwi_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    size, 1, size, 0, NULL, NULL, &sc->txwi_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create txwi DMA tag\n");
 		goto fail;
@@ -725,15 +688,9 @@ rt2860_alloc_rx_ring(struct rt2860_softc *sc, struct rt2860_rx_ring *ring)
 
 	size = RT2860_RX_RING_COUNT * sizeof (struct rt2860_rxd);
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 16, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    size, 1, size, 0, &ring->desc_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 16, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    size, 1, size, 0, NULL, NULL, &ring->desc_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create desc DMA tag\n");
 		goto fail;
@@ -753,15 +710,9 @@ rt2860_alloc_rx_ring(struct rt2860_softc *sc, struct rt2860_rx_ring *ring)
 		goto fail;
 	}
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, MCLBYTES,
 	    1, MCLBYTES, 0, &ring->data_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES,
-	    1, MCLBYTES, 0, NULL, NULL, &ring->data_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create data DMA tag\n");
 		goto fail;
@@ -1250,11 +1201,7 @@ rt2860_rx_intr(struct rt2860_softc *sc)
 
 		if (__predict_false(rxd->flags &
 		    htole32(RT2860_RX_CRCERR | RT2860_RX_ICVERR))) {
-#if defined(__DragonFly__)
 			/* not implemented */
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto skip;
 		}
 
@@ -1263,22 +1210,14 @@ rt2860_rx_intr(struct rt2860_softc *sc)
 			/* report MIC failures to net80211 for TKIP */
 			ic->ic_stats.is_rx_locmicfail++;
 			ieee80211_michael_mic_failure(ic, 0/* XXX */);
-#if defined(__DragonFly__)
 			/* not implemented */
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto skip;
 		}
 #endif
 
 		m1 = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (__predict_false(m1 == NULL)) {
-#if defined(__DragonFly__)
 			/* not implemented */
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto skip;
 		}
 
@@ -1302,11 +1241,7 @@ rt2860_rx_intr(struct rt2860_softc *sc)
 			}
 			/* physical address may have changed */
 			rxd->sdp0 = htole32(physaddr);
-#if defined(__DragonFly__)
 			/* not implemented */
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto skip;
 		}
 
@@ -1529,9 +1464,7 @@ rt2860_tx(struct rt2860_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 	uint8_t type, qsel, mcs, pid, tid, qid;
 	int i, nsegs, ntxds, pad, rate, ridx, error;
 
-#if defined(__DragonFly__)
 	ntxds = 0;	/* quiet gcc5 */
-#endif
 	/* the data pool contains at least one element, pick the first */
 	data = SLIST_FIRST(&sc->data_pool);
 
@@ -1651,13 +1584,8 @@ rt2860_tx(struct rt2860_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 	memcpy(txwi + 1, wh, hdrlen);
 	m_adj(m, hdrlen);
 
-#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(sc->txwi_dmat, data->map, m,
 	    segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-	error = bus_dmamap_load_mbuf_sg(sc->txwi_dmat, data->map, m, segs,
-	    &nsegs, 0);
-#endif
 	if (__predict_false(error != 0 && error != EFBIG)) {
 		device_printf(sc->sc_dev, "can't map mbuf (error %d)\n",
 		    error);
@@ -1684,13 +1612,8 @@ rt2860_tx(struct rt2860_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 		}
 		m = m1;
 
-#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(sc->txwi_dmat, data->map,
 		    m, segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-		error = bus_dmamap_load_mbuf_sg(sc->txwi_dmat, data->map, m,
-		    segs, &nsegs, 0);
-#endif
 		if (__predict_false(error != 0)) {
 			device_printf(sc->sc_dev, "can't map mbuf (error %d)\n",
 			    error);
@@ -1817,9 +1740,7 @@ rt2860_tx_raw(struct rt2860_softc *sc, struct mbuf *m,
 	uint8_t type, qsel, mcs, pid, tid, qid;
 	int i, nsegs, ntxds, pad, rate, ridx, error;
 
-#if defined(__DragonFly__)
 	ntxds = 0;	/* quiet gcc5 */
-#endif
 	/* the data pool contains at least one element, pick the first */
 	data = SLIST_FIRST(&sc->data_pool);
 
@@ -1909,13 +1830,8 @@ rt2860_tx_raw(struct rt2860_softc *sc, struct mbuf *m,
 	memcpy(txwi + 1, wh, hdrlen);
 	m_adj(m, hdrlen);
 
-#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(sc->txwi_dmat, data->map, m,
 	    segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-	error = bus_dmamap_load_mbuf_sg(sc->txwi_dmat, data->map, m, segs,
-	    &nsegs, 0);
-#endif
 	if (__predict_false(error != 0 && error != EFBIG)) {
 		device_printf(sc->sc_dev, "can't map mbuf (error %d)\n",
 		    error);
@@ -1942,13 +1858,8 @@ rt2860_tx_raw(struct rt2860_softc *sc, struct mbuf *m,
 		}
 		m = m1;
 
-#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(sc->txwi_dmat, data->map,
 		    m, segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-		error = bus_dmamap_load_mbuf_sg(sc->txwi_dmat, data->map, m,
-		    segs, &nsegs, 0);
-#endif
 		if (__predict_false(error != 0)) {
 			device_printf(sc->sc_dev, "can't map mbuf (error %d)\n",
 			    error);
@@ -2084,11 +1995,7 @@ rt2860_watchdog(void *arg)
 		device_printf(sc->sc_dev, "device timeout\n");
 		rt2860_stop_locked(sc);
 		rt2860_init_locked(sc);
-#if defined(__DragonFly__)
 			/* not implemented */
-#else
-		counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 		return;
 	}
 	callout_reset(&sc->watchdog_ch, hz, rt2860_watchdog, sc);

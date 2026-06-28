@@ -51,23 +51,12 @@
 #include <sys/linker.h>
 #include <sys/firmware.h>
 #include <sys/taskqueue.h>
-#if defined(__DragonFly__)
 #include <sys/devfs.h>
-#endif
 
-#if !defined(__DragonFly__)
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/rman.h>
 
-#if defined(__DragonFly__)
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#else
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
-#endif
 
 #include <net/bpf.h>
 #include <net/if.h>
@@ -78,17 +67,10 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 
-#if defined(__DragonFly__)
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
 #include <netproto/802_11/ieee80211_input.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
-#else
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_radiotap.h>
-#include <net80211/ieee80211_input.h>
-#include <net80211/ieee80211_regdomain.h>
-#endif
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -96,13 +78,8 @@
 #include <netinet/ip.h>
 #include <netinet/if_ether.h>
 
-#if defined(__DragonFly__)
 #include "if_iwireg.h"
 #include "if_iwivar.h"
-#else
-#include <dev/iwi/if_iwireg.h>
-#include <dev/iwi/if_iwivar.h>
-#endif
 
 #define IWI_DEBUG
 #ifdef IWI_DEBUG
@@ -297,11 +274,7 @@ iwi_attach(device_t dev)
 	IWI_LOCK_INIT(sc);
 	mbufq_init(&sc->sc_snd, ifqmaxlen);
 
-#if defined(__DragonFly__)
 	devfs_clone_bitmap_init(&sc->sc_unr);
-#else
-	sc->sc_unr = new_unrhdr(1, IWI_MAX_IBSSNODE-1, &sc->sc_mtx);
-#endif
 
 	TASK_INIT(&sc->sc_radiontask, 0, iwi_radio_on, sc);
 	TASK_INIT(&sc->sc_radiofftask, 0, iwi_radio_off, sc);
@@ -309,13 +282,8 @@ iwi_attach(device_t dev)
 	TASK_INIT(&sc->sc_disassoctask, 0, iwi_disassoc, sc);
 	TASK_INIT(&sc->sc_monitortask, 0, iwi_monitor_scan, sc);
 
-#if defined(__DragonFly__)
 	callout_init_lk(&sc->sc_wdtimer, &sc->sc_lock);
 	callout_init_lk(&sc->sc_rftimer, &sc->sc_lock);
-#else
-	callout_init_mtx(&sc->sc_wdtimer, &sc->sc_mtx, 0);
-	callout_init_mtx(&sc->sc_rftimer, &sc->sc_mtx, 0);
-#endif
 
 	pci_write_config(dev, 0x41, 0, 1);
 
@@ -438,13 +406,8 @@ iwi_attach(device_t dev)
 	/*
 	 * Hook our interrupt after all initialization is complete.
 	 */
-#if defined(__DragonFly__)
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 	    iwi_intr, sc, &sc->sc_ih, &wlan_global_serializer);
-#else
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
-	    NULL, iwi_intr, sc, &sc->sc_ih);
-#endif
 	if (error != 0) {
 		device_printf(dev, "could not set up interrupt\n");
 		goto fail;
@@ -494,11 +457,7 @@ iwi_detach(device_t dev)
 	bus_release_resource(dev, SYS_RES_MEMORY, rman_get_rid(sc->mem),
 	    sc->mem);
 
-#if defined(__DragonFly__)
 	devfs_clone_bitmap_uninit(&sc->sc_unr);
-#else
-	delete_unrhdr(sc->sc_unr);
-#endif
 	mbufq_drain(&sc->sc_snd);
 
 	IWI_LOCK_DESTROY(sc);
@@ -579,17 +538,10 @@ iwi_alloc_cmd_ring(struct iwi_softc *sc, struct iwi_cmd_ring *ring, int count)
 	ring->queued = 0;
 	ring->cur = ring->next = 0;
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(NULL, 4, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    count * IWI_CMD_DESC_SIZE, 1, count * IWI_CMD_DESC_SIZE,
 	    0 , &ring->desc_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    count * IWI_CMD_DESC_SIZE, 1, count * IWI_CMD_DESC_SIZE, 0,
-	    NULL, NULL, &ring->desc_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create desc DMA tag\n");
 		goto fail;
@@ -648,16 +600,9 @@ iwi_alloc_tx_ring(struct iwi_softc *sc, struct iwi_tx_ring *ring, int count,
 	ring->csr_ridx = csr_ridx;
 	ring->csr_widx = csr_widx;
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(NULL, 4, 0, BUS_SPACE_MAXADDR_32BIT,
 	    BUS_SPACE_MAXADDR, count * IWI_TX_DESC_SIZE, 1,
 	    count * IWI_TX_DESC_SIZE, 0, &ring->desc_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    count * IWI_TX_DESC_SIZE, 1, count * IWI_TX_DESC_SIZE, 0, NULL,
-	    NULL, &ring->desc_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create desc DMA tag\n");
 		goto fail;
@@ -685,15 +630,9 @@ iwi_alloc_tx_ring(struct iwi_softc *sc, struct iwi_tx_ring *ring, int count,
 		goto fail;
 	}
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(NULL, 1, 0, BUS_SPACE_MAXADDR_32BIT,
 	    BUS_SPACE_MAXADDR, MCLBYTES, IWI_MAX_NSEG,
 	    MCLBYTES, 0, &ring->data_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES,
-	IWI_MAX_NSEG, MCLBYTES, 0, NULL, NULL, &ring->data_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create data DMA tag\n");
 		goto fail;
@@ -799,15 +738,9 @@ iwi_alloc_rx_ring(struct iwi_softc *sc, struct iwi_rx_ring *ring, int count)
 		goto fail;
 	}
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(NULL, 1, 0, BUS_SPACE_MAXADDR_32BIT,
 	    BUS_SPACE_MAXADDR, MCLBYTES, 1, MCLBYTES,
 	    0, &ring->data_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES,
-	    1, MCLBYTES, 0, NULL, NULL, &ring->data_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create data DMA tag\n");
 		goto fail;
@@ -937,18 +870,9 @@ iwi_node_free(struct ieee80211_node *ni)
 	struct iwi_node *in = (struct iwi_node *)ni;
 
 	if (in->in_station != -1) {
-#if defined(__DragonFly__)
 		DPRINTF(("%s mac %s station %u\n", __func__,
 		    ether_sprintf(ni->ni_macaddr), in->in_station));
-#else
-		DPRINTF(("%s mac %6D station %u\n", __func__,
-		    ni->ni_macaddr, ":", in->in_station));
-#endif
-#if defined(__DragonFly__)
 		devfs_clone_bitmap_put(&sc->sc_unr, in->in_station);
-#else
-		free_unr(sc->sc_unr, in->in_station);
-#endif
 	}
 
 	sc->sc_node_free(ni);
@@ -1274,11 +1198,7 @@ iwi_frame_intr(struct iwi_softc *sc, struct iwi_rx_data *data, int i,
 	 */
 	mnew = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 	if (mnew == NULL) {
-#if defined(__DragonFly__)
 		++ic->ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		return;
 	}
 
@@ -1299,11 +1219,7 @@ iwi_frame_intr(struct iwi_softc *sc, struct iwi_rx_data *data, int i,
 			panic("%s: could not load old rx mbuf",
 			    device_get_name(sc->sc_dev));
 		}
-#if defined(__DragonFly__)
 		++ic->ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		return;
 	}
 
@@ -1812,11 +1728,7 @@ iwi_cmd(struct iwi_softc *sc, uint8_t type, void *data, uint8_t len)
 	sc->cmdq.cur = (sc->cmdq.cur + 1) % IWI_CMD_RING_COUNT;
 	CSR_WRITE_4(sc, IWI_CSR_CMD_WIDX, sc->cmdq.cur);
 
-#if defined(__DragonFly__)
 	return lksleep(sc, &sc->sc_lock, 0, "iwicmd", hz);
-#else
-	return msleep(sc, &sc->sc_mtx, 0, "iwicmd", hz);
-#endif
 }
 
 static void
@@ -1828,12 +1740,8 @@ iwi_write_ibssnode(struct iwi_softc *sc,
 	/* write node information into NIC memory */
 	memset(&node, 0, sizeof node);
 	IEEE80211_ADDR_COPY(node.bssid, addr);
-#if defined(__DragonFly__)
 	DPRINTF(("%s mac %s station %u\n", __func__, ether_sprintf(node.bssid),
 	    entry));
-#else
-	DPRINTF(("%s mac %6D station %u\n", __func__, node.bssid, ":", entry));
-#endif
 
 	CSR_WRITE_REGION_1(sc,
 	    IWI_CSR_NODE_BASE + entry * sizeof node,
@@ -1883,12 +1791,8 @@ iwi_tx_start(struct iwi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
 	if (vap->iv_opmode == IEEE80211_M_IBSS) {
 		if (!ismcast) {
 			if (in->in_station == -1) {
-#if defined(__DragonFly__)
 				in->in_station = devfs_clone_bitmap_get(&sc->sc_unr,
 					IWI_MAX_IBSSNODE-1);
-#else
-				in->in_station = alloc_unr(sc->sc_unr);
-#endif
 				if (in->in_station == -1) {
 					/* h/w table is full */
 					if_inc_counter(ni->ni_vap->iv_ifp,
@@ -1945,13 +1849,8 @@ iwi_tx_start(struct iwi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
 	m_copydata(m0, 0, hdrlen, &desc->wh);
 	m_adj(m0, hdrlen);
 
-#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(txq->data_dmat, data->map,
 	    m0, segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-	error = bus_dmamap_load_mbuf_sg(txq->data_dmat, data->map, m0, segs,
-	    &nsegs, 0);
-#endif
 	if (error != 0 && error != EFBIG) {
 		device_printf(sc->sc_dev, "could not map mbuf (error %d)\n",
 		    error);
@@ -1968,13 +1867,8 @@ iwi_tx_start(struct iwi_softc *sc, struct mbuf *m0, struct ieee80211_node *ni,
 		}
 		m0 = mnew;
 
-#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(txq->data_dmat,
 		    data->map, m0, segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-		error = bus_dmamap_load_mbuf_sg(txq->data_dmat, data->map,
-		    m0, segs, &nsegs, 0);
-#endif
 		if (error != 0) {
 			device_printf(sc->sc_dev,
 			    "could not map mbuf (error %d)\n", error);
@@ -2091,11 +1985,7 @@ iwi_watchdog(void *arg)
 	if (sc->sc_tx_timer > 0) {
 		if (--sc->sc_tx_timer == 0) {
 			device_printf(sc->sc_dev, "device timeout\n");
-#if defined(__DragonFly__)
 			++ic->ic_oerrors;
-#else
-			counter_u64_add(ic->ic_oerrors, 1);
-#endif
 			ieee80211_runtask(ic, &sc->sc_restarttask);
 		}
 	}
@@ -2565,11 +2455,7 @@ iwi_load_firmware(struct iwi_softc *sc, const struct iwi_fw *fw)
 	CSR_WRITE_4(sc, IWI_CSR_CTL, tmp | IWI_CTL_ALLOW_STANDBY);
 
 	/* wait at most one second for firmware initialization to complete */
-#if defined(__DragonFly__)
 	if ((error = lksleep(sc, &sc->sc_lock, 0, "iwiinit", hz)) != 0) {
-#else
-	if ((error = msleep(sc, &sc->sc_mtx, 0, "iwiinit", hz)) != 0) {
-#endif
 		device_printf(sc->sc_dev, "timeout waiting for %s firmware "
 		    "initialization to complete\n", fw->name);
 	}
@@ -2629,11 +2515,7 @@ iwi_config(struct iwi_softc *sc)
 
 	IWI_LOCK_ASSERT(sc);
 
-#if defined(__DragonFly__)
 	DPRINTF(("Setting MAC address to %s\n", ether_sprintf(ic->ic_macaddr)));
-#else
-	DPRINTF(("Setting MAC address to %6D\n", ic->ic_macaddr, ":"));
-#endif
 	error = iwi_cmd(sc, IWI_CMD_SET_MAC_ADDRESS, ic->ic_macaddr,
 	    IEEE80211_ADDR_LEN);
 	if (error != 0)
@@ -3045,7 +2927,6 @@ iwi_auth_and_assoc(struct iwi_softc *sc, struct ieee80211vap *vap)
 	else
 		IEEE80211_ADDR_COPY(assoc->dst, ni->ni_bssid);
 
-#if defined(__DragonFly__)
 	DPRINTF(("%s bssid %s dst %s channel %u policy 0x%x "
 	    "auth %u capinfo 0x%x lintval %u bintval %u\n",
 	    assoc->type == IWI_HC_IBSS_START ? "Start" : "Join",
@@ -3053,15 +2934,6 @@ iwi_auth_and_assoc(struct iwi_softc *sc, struct ieee80211vap *vap)
 	    assoc->chan, le16toh(assoc->policy), assoc->auth,
 	    le16toh(assoc->capinfo), le16toh(assoc->lintval),
 	    le16toh(assoc->intval)));
-#else
-	DPRINTF(("%s bssid %6D dst %6D channel %u policy 0x%x "
-	    "auth %u capinfo 0x%x lintval %u bintval %u\n",
-	    assoc->type == IWI_HC_IBSS_START ? "Start" : "Join",
-	    assoc->bssid, ":", assoc->dst, ":",
-	    assoc->chan, le16toh(assoc->policy), assoc->auth,
-	    le16toh(assoc->capinfo), le16toh(assoc->lintval),
-	    le16toh(assoc->intval)));
-#endif
 	error = iwi_cmd(sc, IWI_CMD_ASSOCIATE, assoc, sizeof *assoc);
 done:
 	ieee80211_free_node(ni);
@@ -3099,13 +2971,8 @@ iwi_disassociate(struct iwi_softc *sc, int quiet)
 	else
 		assoc->type = IWI_HC_DISASSOC;
 
-#if defined(__DragonFly__)
 	DPRINTF(("Trying to disassociate from %s channel %u\n",
 	    ether_sprintf(assoc->bssid), assoc->chan));
-#else
-	DPRINTF(("Trying to disassociate from %6D channel %u\n",
-	    assoc->bssid, ":", assoc->chan));
-#endif
 	return iwi_cmd(sc, IWI_CMD_ASSOCIATE, assoc, sizeof *assoc);
 }
 
@@ -3140,15 +3007,9 @@ iwi_init_fw_dma(struct iwi_softc *sc, int size)
 {
 	if (sc->fw_dma_size >= size)
 		return 0;
-#if defined(__DragonFly__)
 	if (bus_dma_tag_create(NULL, 4, 0, BUS_SPACE_MAXADDR_32BIT,
 	    BUS_SPACE_MAXADDR, size, 1, size,
 	    0, &sc->fw_dmat) != 0) {
-#else
-	if (bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    size, 1, size, 0, NULL, NULL, &sc->fw_dmat) != 0) {
-#endif
 		device_printf(sc->sc_dev,
 		    "could not create firmware DMA tag\n");
 		goto error;
@@ -3598,11 +3459,7 @@ iwi_ledattach(struct iwi_softc *sc)
 	sc->sc_blinking = 0;
 	sc->sc_ledstate = 1;
 	sc->sc_ledidle = (2700*hz)/1000;	/* 2.7sec */
-#if defined(__DragonFly__)
 	callout_init_lk(&sc->sc_ledtimer, &sc->sc_lock);
-#else
-	callout_init_mtx(&sc->sc_ledtimer, &sc->sc_mtx, 0);
-#endif
 
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		"softled", CTLTYPE_INT | CTLFLAG_RW, sc, 0,

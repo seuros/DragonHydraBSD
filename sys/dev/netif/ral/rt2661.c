@@ -39,12 +39,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/endian.h>
 #include <sys/firmware.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/rman.h>
 
 #include <net/bpf.h>
@@ -208,12 +203,7 @@ rt2661_attach(device_t dev, int id)
 	sc->sc_id = id;
 	sc->sc_dev = dev;
 
-#if defined(__DragonFly__)
 	lockinit(&sc->sc_mtx, device_get_nameunit(dev), 0, LK_CANRECURSE);
-#else
-	mtx_init(&sc->sc_mtx, device_get_nameunit(dev), MTX_NETWORK_LOCK,
-	    MTX_DEF | MTX_RECURSE);
-#endif
 
 	callout_init_mtx(&sc->watchdog_ch, &sc->sc_mtx, 0);
 	mbufq_init(&sc->sc_snd, ifqmaxlen);
@@ -327,11 +317,7 @@ rt2661_attach(device_t dev, int id)
 fail3:	rt2661_free_tx_ring(sc, &sc->mgtq);
 fail2:	while (--ac >= 0)
 		rt2661_free_tx_ring(sc, &sc->txq[ac]);
-#if defined(__DragonFly__)
 fail1:	lockuninit(&sc->sc_mtx);
-#else
-fail1:	mtx_destroy(&sc->sc_mtx);
-#endif
 	return error;
 }
 
@@ -355,11 +341,7 @@ rt2661_detach(void *xsc)
 	rt2661_free_tx_ring(sc, &sc->mgtq);
 	rt2661_free_rx_ring(sc, &sc->rxq);
 
-#if defined(__DragonFly__)
 	lockuninit(&sc->sc_mtx);
-#else
-	mtx_destroy(&sc->sc_mtx);
-#endif
 
 	return 0;
 }
@@ -483,17 +465,10 @@ rt2661_alloc_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring,
 	ring->queued = 0;
 	ring->cur = ring->next = ring->stat = 0;
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    count * RT2661_TX_DESC_SIZE, 1, count * RT2661_TX_DESC_SIZE,
 	    0, &ring->desc_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    count * RT2661_TX_DESC_SIZE, 1, count * RT2661_TX_DESC_SIZE,
-	    0, NULL, NULL, &ring->desc_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create desc DMA tag\n");
 		goto fail;
@@ -522,15 +497,9 @@ rt2661_alloc_tx_ring(struct rt2661_softc *sc, struct rt2661_tx_ring *ring,
 		goto fail;
 	}
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, MCLBYTES,
 	    RT2661_MAX_SCATTER, MCLBYTES, 0, &ring->data_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES,
-	    RT2661_MAX_SCATTER, MCLBYTES, 0, NULL, NULL, &ring->data_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create data DMA tag\n");
 		goto fail;
@@ -637,17 +606,10 @@ rt2661_alloc_rx_ring(struct rt2661_softc *sc, struct rt2661_rx_ring *ring,
 	ring->count = count;
 	ring->cur = ring->next = 0;
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    count * RT2661_RX_DESC_SIZE, 1, count * RT2661_RX_DESC_SIZE,
 	    0, &ring->desc_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    count * RT2661_RX_DESC_SIZE, 1, count * RT2661_RX_DESC_SIZE,
-	    0, NULL, NULL, &ring->desc_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create desc DMA tag\n");
 		goto fail;
@@ -679,15 +641,9 @@ rt2661_alloc_rx_ring(struct rt2661_softc *sc, struct rt2661_rx_ring *ring,
 	/*
 	 * Pre-allocate Rx buffers and populate Rx ring.
 	 */
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 4, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, MCLBYTES,
 	    1, MCLBYTES, 0, &ring->data_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES,
-	    1, MCLBYTES, 0, NULL, NULL, &ring->data_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create data DMA tag\n");
 		goto fail;
@@ -1028,20 +984,12 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 			 */
 			DPRINTFN(sc, 5, "PHY or CRC error flags 0x%08x\n",
 			    le32toh(desc->flags));
-#if defined(__DragonFly__)
 			/* not implemented */
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto skip;
 		}
 
 		if ((le32toh(desc->flags) & RT2661_RX_CIPHER_MASK) != 0) {
-#if defined(__DragonFly__)
 			/* not implemented */
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto skip;
 		}
 
@@ -1054,11 +1002,7 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 		 */
 		mnew = m_getcl(M_NOWAIT, MT_DATA, M_PKTHDR);
 		if (mnew == NULL) {
-#if defined(__DragonFly__)
 			/* not implemented */
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto skip;
 		}
 
@@ -1081,11 +1025,7 @@ rt2661_rx_intr(struct rt2661_softc *sc)
 				panic("%s: could not load old rx mbuf",
 				    device_get_name(sc->sc_dev));
 			}
-#if defined(__DragonFly__)
 			/* not implemented */
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			goto skip;
 		}
 
@@ -1353,13 +1293,8 @@ rt2661_tx_mgt(struct rt2661_softc *sc, struct mbuf *m0,
 		}
 	}
 
-#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(sc->mgtq.data_dmat, data->map, m0,
 	    segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-	error = bus_dmamap_load_mbuf_sg(sc->mgtq.data_dmat, data->map, m0,
-	    segs, &nsegs, 0);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not map mbuf (error %d)\n",
 		    error);
@@ -1459,13 +1394,8 @@ rt2661_sendprot(struct rt2661_softc *sc, int ac,
 	data = &txq->data[txq->cur];
 	desc = &txq->desc[txq->cur];
 
-#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(txq->data_dmat, data->map, mprot,
 		    segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-	error = bus_dmamap_load_mbuf_sg(txq->data_dmat, data->map, mprot, segs,
-	    &nsegs, 0);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not map mbuf (error %d)\n", error);
@@ -1561,13 +1491,8 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 	data = &txq->data[txq->cur];
 	desc = &txq->desc[txq->cur];
 
-#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(txq->data_dmat, data->map, m0,
 		    segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-	error = bus_dmamap_load_mbuf_sg(txq->data_dmat, data->map, m0, segs,
-	    &nsegs, 0);
-#endif
 	if (error != 0 && error != EFBIG) {
 		device_printf(sc->sc_dev, "could not map mbuf (error %d)\n",
 		    error);
@@ -1584,13 +1509,8 @@ rt2661_tx_data(struct rt2661_softc *sc, struct mbuf *m0,
 		}
 		m0 = mnew;
 
-#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(txq->data_dmat, data->map,
 		    m0, segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-		error = bus_dmamap_load_mbuf_sg(txq->data_dmat, data->map, m0,
-		    segs, &nsegs, 0);
-#endif
 		if (error != 0) {
 			device_printf(sc->sc_dev,
 			    "could not map mbuf (error %d)\n", error);
@@ -1753,11 +1673,7 @@ rt2661_watchdog(void *arg)
 	if (sc->sc_tx_timer > 0 && --sc->sc_tx_timer == 0) {
 		device_printf(sc->sc_dev, "device timeout\n");
 		rt2661_init_locked(sc);
-#if defined(__DragonFly__)
 			/* not implemented */
-#else
-		counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 		/* NB: callout is reset in rt2661_init() */
 		return;
 	}
@@ -2468,13 +2384,8 @@ rt2661_stop_locked(struct rt2661_softc *sc)
 	volatile int *flags = &sc->sc_flags;
 	uint32_t tmp;
 
-#if defined(__DragonFly__)
 	while (*flags & RAL_INPUT_RUNNING)
 		lksleep(sc, &sc->sc_mtx, 0, "ralrunning", hz/10);
-#else
-	while (*flags & RAL_INPUT_RUNNING)
-		msleep(sc, &sc->sc_mtx, 0, "ralrunning", hz/10);
-#endif
 
 	callout_stop(&sc->watchdog_ch);
 	sc->sc_tx_timer = 0;

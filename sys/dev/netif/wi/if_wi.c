@@ -81,10 +81,6 @@
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
 
-#if !defined(__DragonFly__)
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <machine/atomic.h>
 #include <sys/rman.h>
 
@@ -97,15 +93,9 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 
-#if defined(__DragonFly__)
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_ioctl.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
-#else
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_ioctl.h>
-#include <net80211/ieee80211_radiotap.h>
-#endif
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -115,15 +105,9 @@
 
 #include <net/bpf.h>
 
-#if defined(__DragonFly__)
 #include "if_wavelan_ieee.h"
 #include "if_wireg.h"
 #include "if_wivar.h"
-#else
-#include <dev/wi/if_wavelan_ieee.h>
-#include <dev/wi/if_wireg.h>
-#include <dev/wi/if_wivar.h>
-#endif
 
 static struct ieee80211vap *wi_vap_create(struct ieee80211com *,
 		    const char [IFNAMSIZ], int, enum ieee80211_opmode, int,
@@ -306,14 +290,8 @@ wi_attach(device_t dev)
 	SYSCTL_ADD_STRING(sctx, SYSCTL_CHILDREN(soid), OID_AUTO, "nic_name",
 	    CTLFLAG_RD, sc->sc_nic_name, 0, "NIC name");
 
-#if defined(__DragonFly__)
 	lockinit(&sc->sc_lk, device_get_nameunit(dev), 0, LK_CANRECURSE);
 	callout_init_lk(&sc->sc_watchdog, &sc->sc_lk);
-#else
-	mtx_init(&sc->sc_mtx, device_get_nameunit(dev), MTX_NETWORK_LOCK,
-	    MTX_DEF | MTX_RECURSE);
-	callout_init_mtx(&sc->sc_watchdog, &sc->sc_mtx, 0);
-#endif
 	mbufq_init(&sc->sc_snd, ifqmaxlen);
 
 	/*
@@ -474,13 +452,8 @@ wi_attach(device_t dev)
 	if (bootverbose)
 		ieee80211_announce(ic);
 
-#if defined(__DragonFly__)
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 	    wi_intr, sc, &sc->wi_intrhand, NULL);
-#else
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
-	    NULL, wi_intr, sc, &sc->wi_intrhand);
-#endif
 	if (error) {
 		device_printf(dev, "bus_setup_intr() failed! (%d)\n", error);
 		ieee80211_ifdetach(ic);
@@ -509,11 +482,7 @@ wi_detach(device_t dev)
 	bus_teardown_intr(dev, sc->irq, sc->wi_intrhand);
 	wi_free(dev);
 	mbufq_drain(&sc->sc_snd);
-#if defined(__DragonFly__)
 	lockuninit(&sc->sc_lk);
-#else
-	mtx_destroy(&sc->sc_mtx);
-#endif
 	return (0);
 }
 
@@ -1032,11 +1001,7 @@ wi_start_tx(struct wi_softc *sc, struct wi_frame *frmhdr, struct mbuf *m0)
 	     || wi_mwrite_bap(sc, fid, off, m0, m0->m_pkthdr.len) != 0;
 	m_freem(m0);
 	if (error) {
-#if defined(__DragonFly__)
 		++sc->sc_ic.ic_oerrors;
-#else
-		counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 		return -1;
 	}
 	sc->sc_txd[cur].d_len = off;
@@ -1158,11 +1123,7 @@ wi_watchdog(void *arg)
 
 	if (sc->sc_tx_timer && --sc->sc_tx_timer == 0) {
 		device_printf(sc->sc_dev, "device timeout\n");
-#if defined(__DragonFly__)
 		++sc->sc_ic.ic_oerrors;
-#else
-		counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 		wi_init(sc);
 		return;
 	}
@@ -1292,11 +1253,7 @@ wi_rx_intr(struct wi_softc *sc)
 	/* First read in the frame header */
 	if (wi_read_bap(sc, fid, 0, &frmhdr, sizeof(frmhdr))) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-#if defined(__DragonFly__)
 		++sc->sc_ic.ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		DPRINTF(("wi_rx_intr: read fid %x failed\n", fid));
 		return;
 	}
@@ -1307,11 +1264,7 @@ wi_rx_intr(struct wi_softc *sc)
 	status = le16toh(frmhdr.wi_status);
 	if (status & WI_STAT_ERRSTAT) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-#if defined(__DragonFly__)
 		++sc->sc_ic.ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		DPRINTF(("wi_rx_intr: fid %x error status %x\n", fid, status));
 		return;
 	}
@@ -1326,11 +1279,7 @@ wi_rx_intr(struct wi_softc *sc)
 	if (off + len > MCLBYTES) {
 		if (ic->ic_opmode != IEEE80211_M_MONITOR) {
 			CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-#if defined(__DragonFly__)
 			++sc->sc_ic.ic_ierrors;
-#else
-			counter_u64_add(ic->ic_ierrors, 1);
-#endif
 			DPRINTF(("wi_rx_intr: oversized packet\n"));
 			return;
 		} else
@@ -1343,11 +1292,7 @@ wi_rx_intr(struct wi_softc *sc)
 		m = m_gethdr(M_NOWAIT, MT_DATA);
 	if (m == NULL) {
 		CSR_WRITE_2(sc, WI_EVENT_ACK, WI_EV_RX);
-#if defined(__DragonFly__)
 		++sc->sc_ic.ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		DPRINTF(("wi_rx_intr: MGET failed\n"));
 		return;
 	}
@@ -1422,25 +1367,15 @@ wi_tx_ex_intr(struct wi_softc *sc)
 				if (status & WI_TXSTAT_DISCONNECT)
 					kprintf(", port disconnected");
 				if (status & WI_TXSTAT_FORM_ERR) {
-#if defined(__DragonFly__)
 					kprintf(", invalid format (data len %u src %s)",
 						le16toh(frmhdr.wi_dat_len),
 						ether_sprintf(frmhdr.wi_ehdr.ether_shost));
-#else
-					printf(", invalid format (data len %u src %6D)",
-						le16toh(frmhdr.wi_dat_len),
-						frmhdr.wi_ehdr.ether_shost, ":");
-#endif
 				}
 				if (status & ~0xf)
 					kprintf(", status=0x%x", status);
 				kprintf("\n");
 			}
-#if defined(__DragonFly__)
 			++sc->sc_ic.ic_oerrors;
-#else
-			counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 		} else
 			DPRINTF(("port disconnected\n"));
 	} else
@@ -1577,11 +1512,7 @@ allmulti:
 		struct ifmultiaddr *ifma;
 
 		ifp = vap->iv_ifp;
-#if defined(__DragonFly__)
 		/* nothing */
-#else
-		if_maddr_rlock(ifp);
-#endif
 		TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
@@ -1591,11 +1522,7 @@ allmulti:
 			    (LLADDR((struct sockaddr_dl *)ifma->ifma_addr)));
 			n++;
 		}
-#if defined(__DragonFly__)
 		/* nothing */
-#else
-		if_maddr_runlock(ifp);
-#endif
 	}
 	return wi_write_rid(sc, WI_RID_MCAST_LIST, &mlist,
 	    IEEE80211_ADDR_LEN * n);
@@ -2063,15 +1990,9 @@ wi_alloc(device_t dev, int rid)
 
 	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE) {
 		sc->iobase_rid = rid;
-#if defined(__DragonFly__)
 		sc->iobase = bus_alloc_resource(dev, SYS_RES_IOPORT,
 		    &sc->iobase_rid, 0, ~0, (1 << 6),
 		    rman_make_alignment_flags(1 << 6) | RF_ACTIVE);
-#else
-		sc->iobase = bus_alloc_resource_anywhere(dev, SYS_RES_IOPORT,
-		    &sc->iobase_rid, (1 << 6),
-		    rman_make_alignment_flags(1 << 6) | RF_ACTIVE);
-#endif
 		if (sc->iobase == NULL) {
 			device_printf(dev, "No I/O space?!\n");
 			return ENXIO;

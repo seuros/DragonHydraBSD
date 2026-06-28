@@ -48,19 +48,10 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 
-#if !defined(__DragonFly__)
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/rman.h>
 
-#if defined(__DragonFly__)
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#else
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -69,23 +60,12 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 
-#if defined(__DragonFly__)
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
-#else
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_radiotap.h>
-#endif
 
-#if defined(__DragonFly__)
 #include "if_wavelan_ieee.h"
 #include "if_wireg.h"
 #include "if_wivar.h"
-#else
-#include <dev/wi/if_wavelan_ieee.h>
-#include <dev/wi/if_wireg.h>
-#include <dev/wi/if_wivar.h>
-#endif
 
 static int wi_pci_probe(device_t);
 static int wi_pci_attach(device_t);

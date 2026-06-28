@@ -236,11 +236,7 @@ struct iwn_softc {
 	device_t		sc_dev;
 	int			sc_debug;
 	struct cdev		*sc_cdev;
-#if defined(__DragonFly__)
 	struct lock		sc_lk;
-#else
-	struct mtx		sc_mtx;
-#endif
 	struct ieee80211com	sc_ic;
 
 	u_int			sc_flags;
@@ -431,19 +427,9 @@ struct iwn_softc {
 	struct mbufq		sc_xmit_queue;
 };
 
-#if defined(__DragonFly__)
 #define IWN_LOCK_INIT(_sc) \
 	lockinit(&(_sc)->sc_lk, device_get_nameunit((_sc)->sc_dev), 0, 0)
 #define IWN_LOCK(_sc)			lockmgr(&(_sc)->sc_lk, LK_EXCLUSIVE)
 #define IWN_LOCK_ASSERT(_sc)		KKASSERT(lockstatus(&(_sc)->sc_lk, curthread) == LK_EXCLUSIVE);
 #define IWN_UNLOCK(_sc)			lockmgr(&(_sc)->sc_lk, LK_RELEASE)
 #define IWN_LOCK_DESTROY(_sc)		lockuninit(&(_sc)->sc_lk)
-#else
-#define IWN_LOCK_INIT(_sc) \
-	mtx_init(&(_sc)->sc_mtx, device_get_nameunit((_sc)->sc_dev), \
-	    MTX_NETWORK_LOCK, MTX_DEF)
-#define IWN_LOCK(_sc)			mtx_lock(&(_sc)->sc_mtx)
-#define IWN_LOCK_ASSERT(_sc)		mtx_assert(&(_sc)->sc_mtx, MA_OWNED)
-#define IWN_UNLOCK(_sc)			mtx_unlock(&(_sc)->sc_mtx)
-#define IWN_LOCK_DESTROY(_sc)		mtx_destroy(&(_sc)->sc_mtx)
-#endif

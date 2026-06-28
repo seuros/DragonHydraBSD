@@ -231,13 +231,8 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 		}
 
 		m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
-#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(ring->data_dmat,
 		    txdata->map, m, &seg, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-		error = bus_dmamap_load_mbuf_sg(ring->data_dmat,
-		    txdata->map, m, &seg, &nsegs, BUS_DMA_NOWAIT);
-#endif
 		if (error != 0) {
 			device_printf(sc->sc_dev,
 			    "%s: can't map mbuf, error %d\n", __func__, error);
@@ -416,18 +411,6 @@ iwm_free_resp(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	wakeup(&sc->sc_wantresp);
 }
 
-#if !defined(__DragonFly__)
-
-static void
-iwm_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nsegs, int error)
-{
-        if (error != 0)
-                return;
-	KASSERT(nsegs == 1, ("too many DMA segments, %d should be 1", nsegs));
-	*(bus_addr_t *)arg = segs[0].ds_addr;
-}
-
-#endif
 
 int
 iwm_dma_contig_alloc(bus_dma_tag_t tag, struct iwm_dma_info *dma,
@@ -440,7 +423,6 @@ iwm_dma_contig_alloc(bus_dma_tag_t tag, struct iwm_dma_info *dma,
 	dma->size = size;
 	dma->vaddr = NULL;
 
-#if defined(__DragonFly__)
 	bus_dmamem_t dmem;
 	error = bus_dmamem_coherent(tag, alignment, 0,
 				    BUS_SPACE_MAXADDR_32BIT,
@@ -452,26 +434,6 @@ iwm_dma_contig_alloc(bus_dma_tag_t tag, struct iwm_dma_info *dma,
 	dma->map = dmem.dmem_map;
 	dma->vaddr = dmem.dmem_addr;
 	dma->paddr = dmem.dmem_busaddr;
-#else
-	error = bus_dma_tag_create(tag, alignment,
-            0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, size,
-            1, size, 0, NULL, NULL, &dma->tag);
-        if (error != 0)
-                goto fail;
-
-        error = bus_dmamem_alloc(dma->tag, (void **)&dma->vaddr,
-            BUS_DMA_NOWAIT | BUS_DMA_ZERO | BUS_DMA_COHERENT, &dma->map);
-        if (error != 0)
-                goto fail;
-
-        error = bus_dmamap_load(dma->tag, dma->map, dma->vaddr, size,
-            iwm_dma_map_addr, &dma->paddr, BUS_DMA_NOWAIT);
-        if (error != 0) {
-		bus_dmamem_free(dma->tag, dma->vaddr, dma->map);
-		dma->vaddr = NULL;
-		goto fail;
-	}
-#endif
 
 	bus_dmamap_sync(dma->tag, dma->map, BUS_DMASYNC_PREWRITE);
 

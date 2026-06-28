@@ -125,11 +125,7 @@ struct iwi_vap {
 #define	IWI_VAP(vap)	((struct iwi_vap *)(vap))
 
 struct iwi_softc {
-#if defined(__DragonFly__)
 	struct lock		sc_lock;
-#else
-	struct mtx		sc_mtx;
-#endif
 	struct ieee80211com	sc_ic;
 	struct mbufq		sc_snd;
 	device_t		sc_dev;
@@ -137,11 +133,7 @@ struct iwi_softc {
 	void			(*sc_node_free)(struct ieee80211_node *);
 
 	uint8_t			sc_mcast[IEEE80211_ADDR_LEN];
-#if defined(__DragonFly__)
 	struct devfs_bitmap	sc_unr;
-#else
-	struct unrhdr		*sc_unr;
-#endif
 
 	uint32_t		flags;
 #define IWI_FLAG_FW_INITED	(1 << 0)
@@ -253,7 +245,6 @@ struct iwi_softc {
  * NB.: This models the only instance of async locking in iwi_init_locked
  *	and must be kept in sync.
  */
-#if defined(__DragonFly__)
 
 #define	IWI_LOCK_INIT(sc) \
 	lockinit(&(sc)->sc_lock, device_get_nameunit((sc)->sc_dev), 0, 0)
@@ -269,21 +260,3 @@ struct iwi_softc {
 		lockmgr(&(sc)->sc_lock, LK_RELEASE);	\
 } while (0)
 
-#else
-
-#define	IWI_LOCK_INIT(sc) \
-	mtx_init(&(sc)->sc_mtx, device_get_nameunit((sc)->sc_dev), \
-	    MTX_NETWORK_LOCK, MTX_DEF)
-#define	IWI_LOCK_DESTROY(sc)	mtx_destroy(&(sc)->sc_mtx)
-#define	IWI_LOCK_DECL	int	__waslocked = 0
-#define IWI_LOCK_ASSERT(sc)	mtx_assert(&(sc)->sc_mtx, MA_OWNED)
-#define IWI_LOCK(sc)	do {				\
-	if (!(__waslocked = mtx_owned(&(sc)->sc_mtx)))	\
-		mtx_lock(&(sc)->sc_mtx);		\
-} while (0)
-#define IWI_UNLOCK(sc)	do {			\
-	if (!__waslocked)			\
-		mtx_unlock(&(sc)->sc_mtx);	\
-} while (0)
-
-#endif

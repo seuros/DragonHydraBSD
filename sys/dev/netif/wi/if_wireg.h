@@ -84,9 +84,6 @@
 #ifdef __NetBSD__
 #define OS_STRING_NAME	"NetBSD"
 #endif
-#ifdef __FreeBSD__
-#define OS_STRING_NAME	"FreeBSD"
-#endif
 #ifdef __OpenBSD__
 #define OS_STRING_NAME	"OpenBSD"
 #endif

@@ -429,23 +429,12 @@ iwm_apm_config(struct iwm_softc *sc)
 	 * If not (unlikely), enable L0S, so there is at least some
 	 *    power savings, even without L1.
 	 */
-#if !defined(__DragonFly__)
-	int error;
-
-	error = pci_find_cap(sc->sc_dev, PCIY_EXPRESS, &pcie_ptr);
-	if (error != 0)
-		return;
-	lctl = pci_read_config(sc->sc_dev, pcie_ptr + PCIER_LINK_CTL,
-	    sizeof(lctl));
-	if (lctl & PCIEM_LINK_CTL_ASPMC_L1)  {
-#else
 	pcie_ptr = pci_get_pciecap_ptr(sc->sc_dev);
 	if (pcie_ptr == 0)
 		return;
 	lctl = pci_read_config(sc->sc_dev, pcie_ptr + PCIER_LINKCTRL,
 		sizeof(lctl));
 	if (lctl & PCIEM_LNKCTL_ASPM_L1)  {
-#endif
 		IWM_SETBITS(sc, IWM_CSR_GIO_REG,
 		    IWM_CSR_GIO_REG_VAL_L0S_ENABLED);
 	} else {
@@ -453,15 +442,6 @@ iwm_apm_config(struct iwm_softc *sc)
 		    IWM_CSR_GIO_REG_VAL_L0S_ENABLED);
 	}
 
-#if !defined(__DragonFly__)
-	cap = pci_read_config(sc->sc_dev, pcie_ptr + PCIER_DEVICE_CTL2,
-	    sizeof(cap));
-	sc->sc_ltr_enabled = (cap & PCIEM_CTL2_LTR_ENABLE) ? 1 : 0;
-	IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_PWRSAVE,
-	    "L1 %sabled - LTR %sabled\n",
-	    (lctl & PCIEM_LINK_CTL_ASPMC_L1) ? "En" : "Dis",
-	    sc->sc_ltr_enabled ? "En" : "Dis");
-#else
 	cap = pci_read_config(sc->sc_dev, pcie_ptr + PCIER_DEVCTRL2,
 	    sizeof(cap));
 	sc->sc_ltr_enabled = (cap & PCIEM_DEVCTL2_LTR_ENABLE) ? 1 : 0;
@@ -469,7 +449,6 @@ iwm_apm_config(struct iwm_softc *sc)
 	    "L1 %sabled - LTR %sabled\n",
 	    (lctl & PCIEM_LNKCTL_ASPM_L1) ? "En" : "Dis",
 	    sc->sc_ltr_enabled ? "En" : "Dis");
-#endif
 }
 
 /*

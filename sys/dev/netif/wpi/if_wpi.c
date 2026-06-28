@@ -77,12 +77,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/linker.h>
 #include <sys/firmware.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/rman.h>
 
 #include <bus/pci/pcireg.h>
@@ -342,9 +337,7 @@ wpi_attach(device_t dev)
 	int supportsa = 1;
 	const struct wpi_ident *ident;
 #endif
-#if defined(__DragonFly__)
 	int irq_flags;
-#endif
 
 	sc->sc_dev = dev;
 
@@ -363,11 +356,7 @@ wpi_attach(device_t dev)
 	 * Get the offset of the PCI Express Capability Structure in PCI
 	 * Configuration Space.
 	 */
-#if defined(__DragonFly__)
 	error = pci_find_extcap(dev, PCIY_EXPRESS, &sc->sc_cap_off);
-#else
-	error = pci_find_cap(dev, PCIY_EXPRESS, &sc->sc_cap_off);
-#endif
 	if (error != 0) {
 		device_printf(dev, "PCIe capability structure not found!\n");
 		return error;
@@ -404,19 +393,8 @@ wpi_attach(device_t dev)
 	sc->sc_st = rman_get_bustag(sc->mem);
 	sc->sc_sh = rman_get_bushandle(sc->mem);
 
-#if defined(__DragonFly__)
 	pci_alloc_1intr(dev, 1, &rid, &irq_flags);
 	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, irq_flags);
-#else
-	rid = 1;
-	if (pci_alloc_msi(dev, &rid) == 0)
-		rid = 1;
-	else
-		rid = 0;
-	/* Install interrupt handler. */
-	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE |
-	    (rid != 0 ? 0 : RF_SHAREABLE));
-#endif
 	if (sc->irq == NULL) {
 		device_printf(dev, "can't map interrupt\n");
 		error = ENOMEM;
@@ -554,13 +532,8 @@ wpi_attach(device_t dev)
 	/*
 	 * Hook our interrupt after all initialization is complete.
 	 */
-#if defined(__DragonFly__)
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 	    wpi_intr, sc, &sc->sc_ih, &wlan_global_serializer);
-#else
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
-	    NULL, wpi_intr, sc, &sc->sc_ih);
-#endif
 	if (error != 0) {
 		device_printf(dev, "can't establish interrupt, error %d\n",
 		    error);
@@ -928,15 +901,9 @@ wpi_dma_contig_alloc(struct wpi_softc *sc, struct wpi_dma_info *dma,
 	dma->tag = NULL;
 	dma->size = size;
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), alignment,
 	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, size,
 	    1, size, 0, &dma->tag);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), alignment,
-	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, size,
-	    1, size, 0, NULL, NULL, &dma->tag);
-#endif
 	if (error != 0)
 		goto fail;
 
@@ -1035,15 +1002,9 @@ wpi_alloc_rx_ring(struct wpi_softc *sc)
 	}
 
 	/* Create RX buffer DMA tag. */
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    MJUMPAGESIZE, 1, MJUMPAGESIZE, 0, &ring->data_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    MJUMPAGESIZE, 1, MJUMPAGESIZE, 0, NULL, NULL, &ring->data_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: could not create RX buf DMA tag, error %d\n",
@@ -1224,15 +1185,9 @@ wpi_alloc_tx_ring(struct wpi_softc *sc, struct wpi_tx_ring *ring, uint8_t qid)
 		goto fail;
 	}
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, MCLBYTES,
 	    WPI_MAX_SCATTER - 1, MCLBYTES, 0, &ring->data_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES,
-	    WPI_MAX_SCATTER - 1, MCLBYTES, 0, NULL, NULL, &ring->data_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: could not create TX buf DMA tag, error %d\n",
@@ -2077,11 +2032,7 @@ wpi_rx_done(struct wpi_softc *sc, struct wpi_rx_desc *desc,
 
 fail2:	m_freem(m);
 
-#if defined(__DragonFly__)
 fail1:	; /* not implemented */
-#else
-fail1:	counter_u64_add(ic->ic_ierrors, 1);
-#endif
 }
 
 static void
@@ -2700,13 +2651,8 @@ wpi_cmd2(struct wpi_softc *sc, struct wpi_buf *buf)
 	memcpy((uint8_t *)(cmd->data + buf->size), wh, hdrlen);
 	m_adj(buf->m, hdrlen);
 
-#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map, buf->m,
 	    segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-	error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map, buf->m,
-	    segs, &nsegs, BUS_DMA_NOWAIT);
-#endif
 	if (error != 0 && error != EFBIG) {
 		device_printf(sc->sc_dev,
 		    "%s: can't map mbuf (error %d)\n", __func__, error);
@@ -2714,11 +2660,7 @@ wpi_cmd2(struct wpi_softc *sc, struct wpi_buf *buf)
 	}
 	if (error != 0) {
 		/* Too many DMA segments, linearize mbuf. */
-#if defined(__DragonFly__)
 		m1 = m_defrag(buf->m, M_NOWAIT);
-#else
-		m1 = m_collapse(buf->m, M_NOWAIT, WPI_MAX_SCATTER - 1);
-#endif
 		if (m1 == NULL) {
 			device_printf(sc->sc_dev,
 			    "%s: could not defrag mbuf\n", __func__);
@@ -2727,13 +2669,8 @@ wpi_cmd2(struct wpi_softc *sc, struct wpi_buf *buf)
 		}
 		buf->m = m1;
 
-#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map,
 		    buf->m, segs, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-		error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map,
-		    buf->m, segs, &nsegs, BUS_DMA_NOWAIT);
-#endif
 		if (__predict_false(error != 0)) {
 			/* XXX fix this (applicable to the iwn(4) too) */
 			/*
@@ -3357,11 +3294,7 @@ wpi_cmd(struct wpi_softc *sc, uint8_t code, const void *buf, uint16_t size,
 
 	WPI_TXQ_UNLOCK(sc);
 
-#if defined(__DragonFly__)
 	return async ? 0 : lksleep(cmd, &sc->sc_mtx, PCATCH, "wpicmd", hz);
-#else
-	return async ? 0 : mtx_sleep(cmd, &sc->sc_mtx, PCATCH, "wpicmd", hz);
-#endif
 
 fail:	DPRINTF(sc, WPI_DEBUG_TRACE, TRACE_STR_END_ERR, __func__);
 
@@ -3861,15 +3794,9 @@ wpi_set_pslevel(struct wpi_softc *sc, uint8_t dtim, int level, int async)
 	if (level != 0)	/* not CAM */
 		cmd.flags |= htole16(WPI_PS_ALLOW_SLEEP);
 	/* Retrieve PCIe Active State Power Management (ASPM). */
-#if defined(__DragonFly__)
 	reg = pci_read_config(sc->sc_dev, sc->sc_cap_off + PCIER_LINKCTRL, 1);
 	if (!(reg & PCIEM_LNKCTL_ASPM_L0S))	/* L0s Entry disabled. */
 		cmd.flags |= htole16(WPI_PS_PCI_PMGT);
-#else
-	reg = pci_read_config(sc->sc_dev, sc->sc_cap_off + PCIER_LINK_CTL, 1);
-	if (!(reg & PCIEM_LINK_CTL_ASPMC_L0S))	/* L0s Entry disabled. */
-		cmd.flags |= htole16(WPI_PS_PCI_PMGT);
-#endif
 
 	cmd.rxtimeout = htole32(pmgt->rxtimeout * IEEE80211_DUR_TU);
 	cmd.txtimeout = htole32(pmgt->txtimeout * IEEE80211_DUR_TU);
@@ -5031,11 +4958,7 @@ wpi_load_firmware(struct wpi_softc *sc)
 	WPI_WRITE(sc, WPI_RESET, 0);
 
 	/* Wait at most one second for first alive notification. */
-#if defined(__DragonFly__)
 	if ((error = lksleep(sc, &sc->sc_mtx, PCATCH, "wpiinit", hz)) != 0) {
-#else
-	if ((error = mtx_sleep(sc, &sc->sc_mtx, PCATCH, "wpiinit", hz)) != 0) {
-#endif
 		device_printf(sc->sc_dev,
 		    "%s: timeout waiting for adapter to initialize, error %d\n",
 		    __func__, error);
@@ -5206,15 +5129,9 @@ wpi_apm_init(struct wpi_softc *sc)
 	WPI_SETBITS(sc, WPI_DBG_HPET_MEM, 0xffff0000);
 
 	/* Retrieve PCIe Active State Power Management (ASPM). */
-#if defined(__DragonFly__)
 	reg = pci_read_config(sc->sc_dev, sc->sc_cap_off + PCIER_LINKCTRL, 1);
 	/* Workaround for HW instability in PCIe L0->L0s->L1 transition. */
 	if (reg & PCIEM_LNKCTL_ASPM_L1)	/* L1 Entry enabled. */
-#else
-	reg = pci_read_config(sc->sc_dev, sc->sc_cap_off + PCIER_LINK_CTL, 1);
-	/* Workaround for HW instability in PCIe L0->L0s->L1 transition. */
-	if (reg & PCIEM_LINK_CTL_ASPMC_L1)	/* L1 Entry enabled. */
-#endif
 		WPI_SETBITS(sc, WPI_GIO, WPI_GIO_L0S_ENA);
 	else
 		WPI_CLRBITS(sc, WPI_GIO, WPI_GIO_L0S_ENA);
@@ -5404,11 +5321,7 @@ wpi_hw_init(struct wpi_softc *sc)
 		return error;
 	}
 	/* Wait at most one second for firmware alive notification. */
-#if defined(__DragonFly__)
 	if ((error = lksleep(sc, &sc->sc_mtx, PCATCH, "wpiinit", hz)) != 0) {
-#else
-	if ((error = mtx_sleep(sc, &sc->sc_mtx, PCATCH, "wpiinit", hz)) != 0) {
-#endif
 		device_printf(sc->sc_dev,
 		    "%s: timeout waiting for adapter to initialize, error %d\n",
 		    __func__, error);

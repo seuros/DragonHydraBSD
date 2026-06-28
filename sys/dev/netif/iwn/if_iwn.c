@@ -48,25 +48,12 @@ __FBSDID("$FreeBSD$");
 #include <sys/caps.h>
 #include <sys/queue.h>
 #include <sys/taskqueue.h>
-#if defined(__DragonFly__)
 #include <sys/device.h>
-#endif
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <machine/clock.h>
-#endif
 
-#if defined(__DragonFly__)
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#else
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -393,21 +380,12 @@ static d_open_t iwn_cdev_open;
 static d_close_t iwn_cdev_close;
 
 static struct dev_ops iwn_cdevsw = {
-#if defined(__DragonFly__)
 	/* none */
 	{ "iwn", 0, 0 },
-#else
-	.d_version = D_VERSION,
-	.d_flags = 0,
-#endif
 	.d_open = iwn_cdev_open,
 	.d_close = iwn_cdev_close,
 	.d_ioctl = iwn_cdev_ioctl,
-#if defined(__DragonFly__)
 	/* none */
-#else
-	.d_name = "iwn",
-#endif
 };
 
 static int
@@ -440,9 +418,7 @@ iwn_attach(device_t dev)
 	struct iwn_softc *sc = device_get_softc(dev);
 	struct ieee80211com *ic;
 	int i, error, rid;
-#if defined(__DragonFly__)
 	int irq_flags;
-#endif
 
 	sc->sc_dev = dev;
 
@@ -461,11 +437,7 @@ iwn_attach(device_t dev)
 	 * Get the offset of the PCI Express Capability Structure in PCI
 	 * Configuration Space.
 	 */
-#if defined(__DragonFly__)
 	error = pci_find_extcap(dev, PCIY_EXPRESS, &sc->sc_cap_off);
-#else
-	error = pci_find_cap(dev, PCIY_EXPRESS, &sc->sc_cap_off);
-#endif
 	if (error != 0) {
 		device_printf(dev, "PCIe capability structure not found!\n");
 		return error;
@@ -488,19 +460,9 @@ iwn_attach(device_t dev)
 	sc->sc_st = rman_get_bustag(sc->mem);
 	sc->sc_sh = rman_get_bushandle(sc->mem);
 
-#if defined(__DragonFly__)
 	pci_alloc_1intr(dev, 1, &rid, &irq_flags);
 	/* Install interrupt handler. */
 	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, irq_flags);
-#else
-	i = 1;
-	rid = 0;
-	if (pci_alloc_msi(dev, &i) == 0)
-		rid = 1;
-	/* Install interrupt handler. */
-	sc->irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE |
-	    (rid != 0 ? 0 : RF_SHAREABLE));
-#endif
 	if (sc->irq == NULL) {
 		device_printf(dev, "can't map interrupt\n");
 		error = ENOMEM;
@@ -634,16 +596,10 @@ iwn_attach(device_t dev)
 	    ((sc->rxchainmask >> 1) & 1) +
 	    ((sc->rxchainmask >> 0) & 1);
 	if (bootverbose) {
-#if defined(__DragonFly__)
 		char ethstr[ETHER_ADDRSTRLEN+1];
 		device_printf(dev, "MIMO %dT%dR, %.4s, address %s\n",
 		    sc->ntxchains, sc->nrxchains, sc->eeprom_domain,
 		    kether_ntoa(ic->ic_macaddr, ethstr));
-#else
-		device_printf(dev, "MIMO %dT%dR, %.4s, address %6D\n",
-		    sc->ntxchains, sc->nrxchains, sc->eeprom_domain,
-		    ic->ic_macaddr, ":");
-#endif
 	}
 
 	if (sc->sc_flags & IWN_FLAG_HAS_11N) {
@@ -715,13 +671,8 @@ iwn_attach(device_t dev)
 
 	iwn_radiotap_attach(sc);
 
-#if defined(__DragonFly__)
 	callout_init_lk(&sc->calib_to, &sc->sc_lk);
 	callout_init_lk(&sc->watchdog_to, &sc->sc_lk);
-#else
-	callout_init_mtx(&sc->calib_to, &sc->sc_mtx, 0);
-	callout_init_mtx(&sc->watchdog_to, &sc->sc_mtx, 0);
-#endif
 	TASK_INIT(&sc->sc_radioon_task, 0, iwn_radio_on, sc);
 	TASK_INIT(&sc->sc_radiooff_task, 0, iwn_radio_off, sc);
 	TASK_INIT(&sc->sc_panic_task, 0, iwn_panicked, sc);
@@ -731,12 +682,8 @@ iwn_attach(device_t dev)
 
 	sc->sc_tq = taskqueue_create("iwn_taskq", M_WAITOK,
 	    taskqueue_thread_enqueue, &sc->sc_tq);
-#if defined(__DragonFly__)
 	error = taskqueue_start_threads(&sc->sc_tq, 1, TDPRI_KERN_DAEMON,
 					-1, "iwn_taskq");
-#else
-	error = taskqueue_start_threads(&sc->sc_tq, 1, 0, "iwn_taskq");
-#endif
 	if (error != 0) {
 		device_printf(dev, "can't start threads, error %d\n", error);
 		goto fail;
@@ -747,14 +694,9 @@ iwn_attach(device_t dev)
 	/*
 	 * Hook our interrupt after all initialization is complete.
 	 */
-#if defined(__DragonFly__)
 	error = bus_setup_intr(dev, sc->irq, INTR_MPSAFE,
 			       iwn_intr, sc, &sc->sc_ih,
 			       &wlan_global_serializer);
-#else
-	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET | INTR_MPSAFE,
-	    NULL, iwn_intr, sc, &sc->sc_ih);
-#endif
 	if (error != 0) {
 		device_printf(dev, "can't establish interrupt, error %d\n",
 		    error);
@@ -1460,11 +1402,7 @@ iwn_detach(device_t dev)
 		ieee80211_draintask(&sc->sc_ic, &sc->sc_radiooff_task);
 		iwn_stop(sc);
 
-#if defined(__DragonFly__)
 		/* doesn't exist for DFly, DFly drains tasks on free */
-#else
-		taskqueue_drain_all(sc->sc_tq);
-#endif
 		taskqueue_free(sc->sc_tq);
 
 		callout_drain(&sc->watchdog_to);
@@ -1795,15 +1733,9 @@ iwn_dma_contig_alloc(struct iwn_softc *sc, struct iwn_dma_info *dma,
 	dma->tag = NULL;
 	dma->size = size;
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), alignment,
 	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, size,
 	    1, size, 0, &dma->tag);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), alignment,
-	    0, BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, size,
-	    1, size, 0, NULL, NULL, &dma->tag);
-#endif
 	if (error != 0)
 		goto fail;
 
@@ -1930,15 +1862,9 @@ iwn_alloc_rx_ring(struct iwn_softc *sc, struct iwn_rx_ring *ring)
 	}
 
 	/* Create RX buffer DMA tag. */
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR,
 	    IWN_RBUF_SIZE, 1, IWN_RBUF_SIZE, 0, &ring->data_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-	    IWN_RBUF_SIZE, 1, IWN_RBUF_SIZE, 0, NULL, NULL, &ring->data_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: could not create RX buf DMA tag, error %d\n",
@@ -2082,15 +2008,9 @@ iwn_alloc_tx_ring(struct iwn_softc *sc, struct iwn_tx_ring *ring, int qid)
 		goto fail;
 	}
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
 	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, MCLBYTES,
 	    IWN_MAX_SCATTER - 1, MCLBYTES, 0, &ring->data_dmat);
-#else
-	error = bus_dma_tag_create(bus_get_dma_tag(sc->sc_dev), 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, MCLBYTES,
-	    IWN_MAX_SCATTER - 1, MCLBYTES, 0, NULL, NULL, &ring->data_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: could not create TX buf DMA tag, error %d\n",
@@ -2908,11 +2828,7 @@ iwn_newstate(struct ieee80211vap *vap, enum ieee80211_state nstate, int arg)
 
 	IEEE80211_UNLOCK(ic);
 	IWN_LOCK(sc);
-#if defined(__DragonFly__)
 	callout_cancel(&sc->calib_to);
-#else
-	callout_stop(&sc->calib_to);
-#endif
 
 	sc->rxon = &sc->rx_on[IWN_RXON_BSS_CTX];
 
@@ -3087,22 +3003,14 @@ iwn_rx_done(struct iwn_softc *sc, struct iwn_rx_desc *desc,
 	if ((flags & IWN_RX_NOERROR) != IWN_RX_NOERROR) {
 		DPRINTF(sc, IWN_DEBUG_RECV, "%s: RX flags error %x\n",
 		    __func__, flags);
-#if defined(__DragonFly__)
 		++ic->ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		return;
 	}
 	/* Discard frames that are too short. */
 	if (len < sizeof (struct ieee80211_frame_ack)) {
 		DPRINTF(sc, IWN_DEBUG_RECV, "%s: frame too short: %d\n",
 		    __func__, len);
-#if defined(__DragonFly__)
 		++ic->ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		return;
 	}
 
@@ -3110,11 +3018,7 @@ iwn_rx_done(struct iwn_softc *sc, struct iwn_rx_desc *desc,
 	if (m1 == NULL) {
 		DPRINTF(sc, IWN_DEBUG_ANY, "%s: no mbuf to restock ring\n",
 		    __func__);
-#if defined(__DragonFly__)
 		++ic->ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		return;
 	}
 	bus_dmamap_unload(ring->data_dmat, data->map);
@@ -3137,11 +3041,7 @@ iwn_rx_done(struct iwn_softc *sc, struct iwn_rx_desc *desc,
 		ring->desc[ring->cur] = htole32(paddr >> 8);
 		bus_dmamap_sync(ring->data_dmat, ring->desc_dma.map,
 		    BUS_DMASYNC_PREWRITE);
-#if defined(__DragonFly__)
 		++ic->ic_ierrors;
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 		return;
 	}
 
@@ -4649,15 +4549,10 @@ iwn_tx_data(struct iwn_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 	tx->security = 0;
 	tx->flags = htole32(flags);
 
-#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(ring->data_dmat,
 					     data->map, m,
 					     segs, IWN_MAX_SCATTER - 1,
 					      &nsegs, BUS_DMA_NOWAIT);
-#else
-	error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map, m, segs,
-	    &nsegs, BUS_DMA_NOWAIT);
-#endif
 	if (error != 0) {
 		if (error != EFBIG) {
 			device_printf(sc->sc_dev,
@@ -4665,11 +4560,7 @@ iwn_tx_data(struct iwn_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 			return error;
 		}
 		/* Too many DMA segments, linearize mbuf. */
-#if defined(__DragonFly__)
 		m1 = m_defrag(m, M_NOWAIT);
-#else
-		m1 = m_collapse(m, M_NOWAIT, IWN_MAX_SCATTER - 1);
-#endif
 		if (m1 == NULL) {
 			device_printf(sc->sc_dev,
 			    "%s: could not defrag mbuf\n", __func__);
@@ -4677,15 +4568,10 @@ iwn_tx_data(struct iwn_softc *sc, struct mbuf *m, struct ieee80211_node *ni)
 		}
 		m = m1;
 
-#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(ring->data_dmat,
 						     data->map, m,
 						     segs, IWN_MAX_SCATTER - 1,
 						     &nsegs, BUS_DMA_NOWAIT);
-#else
-		error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map, m,
-		    segs, &nsegs, BUS_DMA_NOWAIT);
-#endif
 		if (error != 0) {
 			device_printf(sc->sc_dev,
 			    "%s: can't map mbuf (error %d)\n", __func__, error);
@@ -4868,14 +4754,9 @@ iwn_tx_data_raw(struct iwn_softc *sc, struct mbuf *m,
 	tx->security = 0;
 	tx->flags = htole32(flags);
 
-#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(ring->data_dmat, data->map,
 					     m, segs, IWN_MAX_SCATTER - 1,
 					     &nsegs, BUS_DMA_NOWAIT);
-#else
-	error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map, m, segs,
-	    &nsegs, BUS_DMA_NOWAIT);
-#endif
 	if (error != 0) {
 		if (error != EFBIG) {
 			device_printf(sc->sc_dev,
@@ -4883,11 +4764,7 @@ iwn_tx_data_raw(struct iwn_softc *sc, struct mbuf *m,
 			return error;
 		}
 		/* Too many DMA segments, linearize mbuf. */
-#if defined(__DragonFly__)
 		m1 = m_defrag(m, M_NOWAIT);
-#else
-		m1 = m_collapse(m, M_NOWAIT, IWN_MAX_SCATTER - 1);
-#endif
 		if (m1 == NULL) {
 			device_printf(sc->sc_dev,
 			    "%s: could not defrag mbuf\n", __func__);
@@ -4895,15 +4772,10 @@ iwn_tx_data_raw(struct iwn_softc *sc, struct mbuf *m,
 		}
 		m = m1;
 
-#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(ring->data_dmat,
 						     data->map, m,
 						     segs, IWN_MAX_SCATTER - 1,
 						     &nsegs, BUS_DMA_NOWAIT);
-#else
-		error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map, m,
-		    segs, &nsegs, BUS_DMA_NOWAIT);
-#endif
 		if (error != 0) {
 			device_printf(sc->sc_dev,
 			    "%s: can't map mbuf (error %d)\n", __func__, error);
@@ -5112,31 +4984,20 @@ iwn_watchdog(void *arg)
 	callout_reset(&sc->watchdog_to, hz, iwn_watchdog, sc);
 }
 
-#if defined(__DragonFly__)
 static int
 iwn_cdev_open(struct dev_open_args *ap)
-#else
-static int
-iwn_cdev_open(struct cdev *dev, int flags, int type, struct thread *td)
-#endif
 {
 
 	return (0);
 }
 
-#if defined(__DragonFly__)
 static int
 iwn_cdev_close(struct dev_close_args *ap)
-#else
-static int
-iwn_cdev_close(struct cdev *dev, int flags, int type, struct thread *td)
-#endif
 {
 
 	return (0);
 }
 
-#if defined(__DragonFly__)
 static int
 iwn_cdev_ioctl(struct dev_ioctl_args *ap)
 {
@@ -5144,12 +5005,6 @@ iwn_cdev_ioctl(struct dev_ioctl_args *ap)
 	unsigned long cmd = ap->a_cmd;
 	caddr_t data = ap->a_data;
 	struct thread *td = curthread;
-#else
-static int
-iwn_cdev_ioctl(struct cdev *dev, unsigned long cmd, caddr_t data, int fflag,
-    struct thread *td)
-{
-#endif
 	int rc;
 	struct iwn_softc *sc = dev->si_drv1;
 	struct iwn_ioctl_data *d;
@@ -5291,11 +5146,7 @@ iwn_cmd(struct iwn_softc *sc, int code, const void *buf, int size, int async)
 
 	DPRINTF(sc, IWN_DEBUG_TRACE, "->%s: end\n",__func__);
 
-#if defined(__DragonFly__)
 	return async ? 0 : lksleep(desc, &sc->sc_lk, PCATCH, "iwncmd", hz);
-#else
-	return async ? 0 : msleep(desc, &sc->sc_mtx, PCATCH, "iwncmd", hz);
-#endif
 }
 
 static int
@@ -6446,15 +6297,9 @@ iwn_set_pslevel(struct iwn_softc *sc, int dtim, int level, int async)
 	if (level == 5)
 		cmd.flags |= htole16(IWN_PS_FAST_PD);
 	/* Retrieve PCIe Active State Power Management (ASPM). */
-#if defined(__DragonFly__)
 	reg = pci_read_config(sc->sc_dev, sc->sc_cap_off + PCIER_LINKCTRL, 4);
 	if (!(reg & PCIEM_LNKCTL_ASPM_L0S))	/* L0s Entry disabled. */
 		cmd.flags |= htole16(IWN_PS_PCI_PMGT);
-#else
-	reg = pci_read_config(sc->sc_dev, sc->sc_cap_off + PCIER_LINK_CTL, 4);
-	if (!(reg & PCIEM_LINK_CTL_ASPMC_L0S))	/* L0s Entry disabled. */
-		cmd.flags |= htole16(IWN_PS_PCI_PMGT);
-#endif
 	cmd.rxtimeout = htole32(pmgt->rxtimeout * 1024);
 	cmd.txtimeout = htole32(pmgt->txtimeout * 1024);
 
@@ -7681,11 +7526,7 @@ iwn5000_query_calibration(struct iwn_softc *sc)
 
 	/* Wait at most two seconds for calibration to complete. */
 	if (!(sc->sc_flags & IWN_FLAG_CALIB_DONE))
-#if defined(__DragonFly__)
 		error = lksleep(sc, &sc->sc_lk, PCATCH, "iwncal", 2 * hz);
-#else
-		error = msleep(sc, &sc->sc_mtx, PCATCH, "iwncal", 2 * hz);
-#endif
 	return error;
 }
 
@@ -8064,11 +7905,7 @@ iwn4965_load_firmware(struct iwn_softc *sc)
 	IWN_WRITE(sc, IWN_RESET, 0);
 
 	/* Wait at most one second for first alive notification. */
-#if defined(__DragonFly__)
 	if ((error = lksleep(sc, &sc->sc_lk, PCATCH, "iwninit", hz)) != 0) {
-#else
-	if ((error = msleep(sc, &sc->sc_mtx, PCATCH, "iwninit", hz)) != 0) {
-#endif
 		device_printf(sc->sc_dev,
 		    "%s: timeout waiting for adapter to initialize, error %d\n",
 		    __func__, error);
@@ -8136,11 +7973,7 @@ iwn5000_load_firmware_section(struct iwn_softc *sc, uint32_t dst,
 	iwn_nic_unlock(sc);
 
 	/* Wait at most five seconds for FH DMA transfer to complete. */
-#if defined(__DragonFly__)
 	return lksleep(sc, &sc->sc_lk, PCATCH, "iwninit", 5 * hz);
-#else
-	return msleep(sc, &sc->sc_mtx, PCATCH, "iwninit", 5 * hz);
-#endif
 }
 
 static int
@@ -8470,15 +8303,9 @@ iwn_apm_init(struct iwn_softc *sc)
 	IWN_SETBITS(sc, IWN_HW_IF_CONFIG, IWN_HW_IF_CONFIG_HAP_WAKE_L1A);
 
 	/* Retrieve PCIe Active State Power Management (ASPM). */
-#if defined(__DragonFly__)
 	reg = pci_read_config(sc->sc_dev, sc->sc_cap_off + PCIER_LINKCTRL, 4);
 	/* Workaround for HW instability in PCIe L0->L0s->L1 transition. */
 	if (reg & PCIEM_LNKCTL_ASPM_L1)	/* L1 Entry enabled. */
-#else
-	reg = pci_read_config(sc->sc_dev, sc->sc_cap_off + PCIER_LINK_CTL, 4);
-	/* Workaround for HW instability in PCIe L0->L0s->L1 transition. */
-	if (reg & PCIEM_LINK_CTL_ASPMC_L1)	/* L1 Entry enabled. */
-#endif
 		IWN_SETBITS(sc, IWN_GIO, IWN_GIO_L0S_ENA);
 	else
 		IWN_CLRBITS(sc, IWN_GIO, IWN_GIO_L0S_ENA);
@@ -8747,11 +8574,7 @@ iwn_hw_init(struct iwn_softc *sc)
 		return error;
 	}
 	/* Wait at most one second for firmware alive notification. */
-#if defined(__DragonFly__)
 	if ((error = lksleep(sc, &sc->sc_lk, PCATCH, "iwninit", hz)) != 0) {
-#else
-	if ((error = msleep(sc, &sc->sc_mtx, PCATCH, "iwninit", hz)) != 0) {
-#endif
 		device_printf(sc->sc_dev,
 		    "%s: timeout waiting for adapter to initialize, error %d\n",
 		    __func__, error);
@@ -8987,13 +8810,8 @@ iwn_stop_locked(struct iwn_softc *sc)
 
 	sc->sc_is_scanning = 0;
 	sc->sc_tx_timer = 0;
-#if defined(__DragonFly__)
 	callout_cancel(&sc->watchdog_to);
 	callout_cancel(&sc->calib_to);
-#else
-	callout_stop(&sc->watchdog_to);
-	callout_stop(&sc->calib_to);
-#endif
 	sc->sc_flags &= ~IWN_FLAG_RUNNING;
 
 	/* Power OFF hardware. */

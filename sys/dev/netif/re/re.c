@@ -40,75 +40,6 @@
  * Columbia University, New York City
  */
 
-#ifndef __DragonFly__
-#include <sys/cdefs.h>
-
-#ifdef ENABLE_FIBER_SUPPORT
-#define FIBER_SUFFIX "-FIBER"
-#else
-#define FIBER_SUFFIX ""
-#endif
-#define RE_VERSION "1.96.04" FIBER_SUFFIX
-
-__FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v " RE_VERSION __DATE__ " " __TIME__ "  wpaul Exp $");
-
-/*
-* This driver also support Realtek RTL8110/RTL8169, RTL8111/RTL8168, RTL8125, and RTL8136/RTL810x.
-*/
-
-#include <sys/param.h>
-#include <sys/systm.h>
-#include <sys/sockio.h>
-#include <sys/mbuf.h>
-#include <sys/malloc.h>
-#include <sys/kernel.h>
-#include <sys/socket.h>
-#include <sys/taskqueue.h>
-#include <sys/random.h>
-
-#include <net/if.h>
-#include <net/if_var.h>
-#include <net/if_arp.h>
-#include <net/ethernet.h>
-#include <net/if_dl.h>
-#include <net/if_media.h>
-
-#include <net/bpf.h>
-
-#include <vm/vm.h>              /* for vtophys */
-#include <vm/pmap.h>            /* for vtophys */
-#include <machine/clock.h>      /* for DELAY */
-
-#include <machine/bus.h>
-#include <machine/resource.h>
-#include <sys/bus.h>
-#include <sys/rman.h>
-#include <sys/endian.h>
-
-#include <dev/mii/mii.h>
-#include <dev/re/if_rereg.h>
-#ifdef ENABLE_FIBER_SUPPORT
-#include <dev/re/if_fiber.h>
-#endif //ENABLE_FIBER_SUPPORT
-
-#if OS_VER < VERSION(5,3)
-#include <pci/pcireg.h>
-#include <pci/pcivar.h>
-#include <machine/bus_pio.h>
-#include <machine/bus_memio.h>
-#else
-#include <dev/pci/pcireg.h>
-#include <dev/pci/pcivar.h>
-#include <sys/module.h>
-#endif
-
-#if OS_VER > VERSION(5,9)
-#include <sys/cdefs.h>
-#include <sys/endian.h>
-#include <net/if_types.h>
-#include <net/if_vlan_var.h>
-#endif
-#else	/* __DragonFly__ */
 
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -138,7 +69,6 @@ __FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v " RE_VERSION __DATE__ " " __TIME__ 
 
 #define RE_GET_IFNET(sc)	&(sc)->arpcom.ac_if
 
-#endif	/* !__DragonFly__ */
 
 #define EE_SET(x)					\
 	CSR_WRITE_1(sc, RE_EECMD,			\
@@ -148,130 +78,17 @@ __FBSDID("$FreeBSD: src/sys/dev/re/if_re.c,v " RE_VERSION __DATE__ " " __TIME__ 
 	CSR_WRITE_1(sc, RE_EECMD,			\
 		CSR_READ_1(sc, RE_EECMD) & ~x)
 
-#ifndef __DragonFly__
-/*
- * Various supported device vendors/types and their names.
- */
-static struct re_type re_devs[] = {
-        {
-                RT_VENDORID, RT_DEVICEID_8169,
-                "Realtek PCI GbE Family Controller"
-        },
-        {
-                RT_VENDORID, RT_DEVICEID_8169SC,
-                "Realtek PCI GbE Family Controller"
-        },
-        {
-                RT_VENDORID, RT_DEVICEID_8168,
-                "Realtek PCIe GbE Family Controller"
-        },
-        {
-                RT_VENDORID, RT_DEVICEID_8161,
-                "Realtek PCIe GbE Family Controller"
-        },
-        {
-                RT_VENDORID, RT_DEVICEID_8136,
-                "Realtek PCIe FE Family Controller"
-        },
-        {
-                DLINK_VENDORID, 0x4300,
-                "Realtek PCI GbE Family Controller"
-        },
-        {
-                RT_VENDORID, RT_DEVICEID_8125,
-                "Realtek PCIe 2.5GbE Family Controller"
-        },
-        { 0, 0, NULL }
-};
-
-static int	re_probe			__P((device_t));
-static int	re_attach			__P((device_t));
-static int	re_detach			__P((device_t));
-static int	re_suspend 			__P((device_t));
-static int	re_resume 			__P((device_t));
-static int	re_shutdown			__P((device_t));
-
-void MP_WritePhyUshort			__P((struct re_softc*, u_int8_t, u_int16_t));
-u_int16_t MP_ReadPhyUshort		__P((struct re_softc*, u_int8_t));
-static void MP_WriteEPhyUshort			__P((struct re_softc*, u_int8_t, u_int16_t));
-static u_int16_t MP_ReadEPhyUshort		__P((struct re_softc*, u_int8_t));
-static u_int8_t MP_ReadEfuse			__P((struct re_softc*, u_int16_t));
-static void MP_RealWritePhyOcpRegWord       __P((struct re_softc*, u_int16_t, u_int16_t));
-static u_int16_t MP_RealReadPhyOcpRegWord   __P((struct re_softc*, u_int16_t));
-static void MP_WritePhyOcpRegWord       __P((struct re_softc*, u_int16_t, u_int8_t, u_int16_t));
-static u_int16_t MP_ReadPhyOcpRegWord   __P((struct re_softc*, u_int16_t, u_int8_t));
-void MP_WriteMcuAccessRegWord    __P((struct re_softc*, u_int16_t, u_int16_t));
-u_int16_t MP_ReadMcuAccessRegWord  __P((struct re_softc*, u_int16_t));
-static void MP_WriteOtherFunPciEConfigSpace    __P((struct re_softc *, u_int8_t, u_int16_t, u_int32_t Regata));
-static u_int32_t MP_ReadOtherFunPciEConfigSpace   __P((struct re_softc *, u_int8_t, u_int16_t));
-static void MP_WritePciEConfigSpace     __P((struct re_softc*, u_int16_t, u_int32_t));
-static u_int32_t MP_ReadPciEConfigSpace __P((struct re_softc*, u_int16_t));
-static u_int8_t MP_ReadByteFun0PciEConfigSpace __P((struct re_softc*, u_int16_t));
-static bool re_set_phy_mcu_patch_request  __P((struct re_softc *));
-static bool re_clear_phy_mcu_patch_request  __P((struct re_softc *));
-#endif	/* !__DragonFly__ */
 
 static int re_check_dash  __P((struct re_softc *));
 
-#ifndef __DragonFly__
-static void re_driver_start             __P((struct re_softc*));
-static void re_driver_stop         	__P((struct re_softc*));
-
-static void re_hw_phy_config		__P((struct re_softc *));
-static void re_init			__P((void *));
-static int  re_var_init			__P((struct re_softc *));
-static void re_reset			__P((struct re_softc *));
-static void re_stop			__P((struct re_softc *));
-static void re_setwol			__P((struct re_softc *));
-#endif	/* !__DragonFly__ */
 static void re_clrwol			__P((struct re_softc *));
 static void re_set_wol_linkspeed 	__P((struct re_softc *));
 
-#ifndef __DragonFly__
-static void re_start				__P((struct ifnet *));
-static int re_encap				__P((struct re_softc *, struct mbuf *));
-static void WritePacket				__P((struct re_softc *, caddr_t, int, int, int, uint32_t, uint32_t));
-static int CountFreeTxDescNum			__P((struct re_descriptor));
-static int CountMbufNum				__P((struct mbuf *));
-#ifdef RE_FIXUP_RX
-static __inline void re_fixup_rx		__P((struct mbuf *));
-#endif
-static void re_txeof				__P((struct re_softc *));
-
-static void re_rxeof				__P((struct re_softc *));
-
-#if OS_VER < VERSION(7,0)
-static void re_intr				__P((void *));
-#else
-static int re_intr				__P((void *));
-#endif //OS_VER < VERSION(7,0)
-#if OS_VER < VERSION(7,0)
-static void re_intr_8125				__P((void *));
-#else
-static int re_intr_8125				__P((void *));
-#endif //OS_VER < VERSION(7,0)
-#endif	/* !__DragonFly__ */
 static void re_set_multicast_reg	__P((struct re_softc *, u_int32_t, u_int32_t));
-#ifndef __DragonFly__
-static void re_set_rx_packet_filter_in_sleep_state	__P((struct re_softc *));
-#endif
 static void re_set_rx_packet_filter	__P((struct re_softc *));
 static void re_setmulti			__P((struct re_softc *));
-#ifndef __DragonFly__
-static int  re_ioctl			__P((struct ifnet *, u_long, caddr_t));
-#endif
 static u_int8_t re_link_ok	__P((struct re_softc *));
 static void re_link_on_patch	__P((struct re_softc *));
-#ifndef __DragonFly__
-static void re_link_down_patch	__P((struct re_softc *));
-static void re_init_timer	__P((struct re_softc *));
-static void re_stop_timer	__P((struct re_softc *));
-static void re_start_timer	__P((struct re_softc *));
-static void re_tick				__P((void *));
-#if OS_VER < VERSION(7,0)
-static void re_watchdog				__P((struct ifnet *));
-#endif
-#endif	/* !__DragonFly__ */
 
 static int  re_ifmedia_upd			__P((struct ifnet *));
 static void re_ifmedia_sts			__P((struct ifnet *, struct ifmediareq *));
@@ -284,26 +101,14 @@ static u_int16_t re_eeprom_ShiftInBits		__P((struct re_softc *));
 static void re_eeprom_EEpromCleanup		__P((struct re_softc *));
 static void re_eeprom_getword			__P((struct re_softc *, int, u_int16_t *));
 static void re_read_eeprom			__P((struct re_softc *, caddr_t, int, int, int));
-#ifndef __DragonFly__
-static void re_int_task				(void *, int);
-static void re_int_task_8125		(void *, int);
-#endif	/* !__DragonFly__ */
 
 static void re_phy_power_up(device_t dev);
 static void re_phy_power_down(device_t dev);
-#ifndef __DragonFly__
-static int re_alloc_buf(struct re_softc *);
-static void re_release_buf(struct re_softc *);
-static void set_rxbufsize(struct re_softc*);
-static void re_release_rx_buf(struct re_softc *);
-static void re_release_tx_buf(struct re_softc *);
-#endif	/* !__DragonFly__ */
 static u_int32_t re_eri_read(struct re_softc *, int, int, int);
 static int re_eri_write(struct re_softc *, int, int, u_int32_t, int);
 static void OOB_mutex_lock(struct re_softc *);
 static void OOB_mutex_unlock(struct re_softc *);
 
-#ifdef __DragonFly__
 static u_int16_t MP_RealReadPhyOcpRegWord(struct re_softc*, u_int16_t);
 static void MP_RealWritePhyOcpRegWord(struct re_softc*, u_int16_t, u_int16_t);
 
@@ -334,7 +139,6 @@ void re_driver_stop(struct re_softc *);
 
 static bool re_set_phy_mcu_patch_request(struct re_softc *);
 static bool re_clear_phy_mcu_patch_request(struct re_softc *);
-#endif	/* __DragonFly__ */
 
 static void re_hw_start_unlock(struct re_softc *sc);
 static void re_hw_start_unlock_8125(struct re_softc *sc);
@@ -371,28 +175,6 @@ TUNABLE_INT("hw.re.s0_magic_packet", &s0_magic_packet);
 
 #define RE_CSUM_FEATURES    (CSUM_IP | CSUM_TCP | CSUM_UDP)
 
-#ifndef __DragonFly__
-static device_method_t re_methods[] = {
-        /* Device interface */
-        DEVMETHOD(device_probe, re_probe),
-        DEVMETHOD(device_attach, re_attach),
-        DEVMETHOD(device_detach, re_detach),
-        DEVMETHOD(device_suspend, re_suspend),
-        DEVMETHOD(device_resume, re_resume),
-        DEVMETHOD(device_shutdown, re_shutdown),
-        { 0, 0 }
-};
-
-static driver_t re_driver = {
-        "re",
-        re_methods,
-        sizeof(struct re_softc)
-};
-
-static devclass_t re_devclass;
-
-DRIVER_MODULE(if_re, pci, re_driver, re_devclass, 0, 0);
-#endif	/* !__DragonFly__ */
 
 static void
 ClearAndSetEthPhyBit(
@@ -770,82 +552,6 @@ static void re_phy_power_down(device_t dev)
                 CSR_WRITE_1(sc, RE_PMCH, CSR_READ_1(sc, RE_PMCH) & ~(BIT_6|BIT_7));
 }
 
-#ifndef __DragonFly__
-static void re_tx_dma_map_buf(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-        union TxDesc *txptr = arg;
-
-        if (error) {
-                txptr->ul[0] &= ~htole32(RL_TDESC_CMD_BUFLEN);
-                txptr->so1.TxBuffL = 0;
-                txptr->so1.TxBuffH = 0;
-                return;
-        }
-
-        txptr->so1.TxBuffL = htole32(RL_ADDR_LO(segs->ds_addr));
-        txptr->so1.TxBuffH = htole32(RL_ADDR_HI(segs->ds_addr));
-}
-
-static void re_rx_dma_map_buf(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-        union RxDesc *rxptr = arg;
-
-        if (error) {
-                rxptr->ul[0] &= ~htole32(RL_RDESC_CMD_BUFLEN);
-                rxptr->so0.RxBuffL = 0;
-                rxptr->so0.RxBuffH = 0;
-                return;
-        }
-
-        rxptr->so0.RxBuffL = htole32(RL_ADDR_LO(segs->ds_addr));
-        rxptr->so0.RxBuffH = htole32(RL_ADDR_HI(segs->ds_addr));
-}
-
-static void re_dma_map_rxdesc(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-        struct re_softc *sc = arg;
-
-
-        if (error)
-                return;
-
-        CSR_WRITE_4(sc, 0xe4, RL_ADDR_LO(segs->ds_addr));
-        CSR_WRITE_4(sc, 0xe8, RL_ADDR_HI(segs->ds_addr));
-}
-
-static void re_dma_map_txdesc(void *arg, bus_dma_segment_t *segs, int nseg, int error)
-{
-        struct re_softc *sc = arg;
-
-
-        if (error)
-                return;
-
-        CSR_WRITE_4(sc, 0x20, RL_ADDR_LO(segs->ds_addr));
-        CSR_WRITE_4(sc, 0x24, RL_ADDR_HI(segs->ds_addr));
-}
-
-/*
- * Probe for a RealTek 8129/8139 chip. Check the PCI vendor and device
- * IDs against our list and return a device name if we find a match.
- */
-static int re_probe(dev)	/* Search for Realtek NIC chip */
-device_t		dev;
-{
-        struct re_type		*t;
-        t = re_devs;
-        while (t->re_name != NULL) {
-                if ((pci_get_vendor(dev) == t->re_vid) &&
-                    (pci_get_device(dev) == t->re_did)) {
-                        device_set_desc(dev, t->re_name);
-                        return(0);
-                }
-                t++;
-        }
-
-        return(ENXIO);
-}
-#endif	/* !__DragonFly__ */
 
 
 static u_int32_t re_eri_read_with_oob_base_address(struct re_softc *sc, int addr, int len, int type, const u_int32_t base_address)
@@ -956,155 +662,6 @@ static int re_eri_write(struct re_softc *sc, int addr, int len, u_int32_t value,
         return re_eri_write_with_oob_base_address(sc, addr, len, value, type, 0);
 }
 
-#ifndef __DragonFly__
-static void re_release_rx_buf(struct re_softc *sc)
-{
-        struct ifnet		*ifp;
-        int i;
-        ifp = RE_GET_IFNET(sc);
-
-        if (sc->re_desc.re_rx_mtag) {
-                for (i = 0; i < RE_RX_BUF_NUM; i++) {
-                        if (sc->re_desc.rx_buf[i]!=NULL) {
-                                bus_dmamap_sync(sc->re_desc.re_rx_mtag,
-                                                sc->re_desc.re_rx_dmamap[i],
-                                                BUS_DMASYNC_POSTREAD);
-                                bus_dmamap_unload(sc->re_desc.re_rx_mtag,
-                                                  sc->re_desc.re_rx_dmamap[i]);
-                                bus_dmamap_destroy(sc->re_desc.re_rx_mtag,
-                                                   sc->re_desc.re_rx_dmamap[i]);
-                                m_freem(sc->re_desc.rx_buf[i]);
-                                sc->re_desc.rx_buf[i] =NULL;
-                        }
-                }
-                bus_dma_tag_destroy(sc->re_desc.re_rx_mtag);
-                sc->re_desc.re_rx_mtag =0;
-        }
-
-}
-static void re_release_tx_buf(struct re_softc *sc)
-{
-        struct ifnet		*ifp;
-        int i;
-        ifp = RE_GET_IFNET(sc);
-
-        if (sc->re_desc.re_tx_mtag) {
-                for (i = 0; i < RE_TX_BUF_NUM; i++) {
-
-                        bus_dmamap_destroy(sc->re_desc.re_tx_mtag,
-                                           sc->re_desc.re_tx_dmamap[i]);
-                        m_freem(sc->re_desc.tx_buf[i]);
-
-                }
-                bus_dma_tag_destroy(sc->re_desc.re_tx_mtag);
-                sc->re_desc.re_tx_mtag = 0;
-        }
-
-
-}
-static void re_release_buf(struct re_softc *sc)
-{
-        re_release_rx_buf(sc);
-        re_release_tx_buf(sc);
-}
-
-
-
-static int re_alloc_buf(struct re_softc *sc)
-{
-        int error =0;
-        int i,size;
-
-        error = bus_dma_tag_create(sc->re_parent_tag, 1, 0,
-                                   BUS_SPACE_MAXADDR, BUS_SPACE_MAXADDR, NULL,
-                                   NULL, MCLBYTES * RE_NTXSEGS, RE_NTXSEGS, 4096, 0,
-                                   NULL, NULL, &sc->re_desc.re_tx_mtag);
-
-        if (error) {
-                //device_printf(dev,"re_tx_mtag fail\n");
-                //goto fail;
-                return error;
-        }
-
-        error = bus_dma_tag_create(
-                        sc->re_parent_tag,
-                        RE_RX_BUFFER_ALIGN, 0,		/* alignment, boundary */
-                        BUS_SPACE_MAXADDR,		/* lowaddr */
-                        BUS_SPACE_MAXADDR,		/* highaddr */
-                        NULL, NULL,			/* filter, filterarg */
-                        sc->re_rx_desc_buf_sz, 1,			/* maxsize,nsegments */
-                        sc->re_rx_desc_buf_sz,			/* maxsegsize */
-                        0,				/* flags */
-                        NULL, NULL,			/* lockfunc, lockarg */
-                        &sc->re_desc.re_rx_mtag);
-        if (error) {
-                //device_printf(dev,"re_rx_mtag fail\n");
-                //goto fail;
-                return error;
-        }
-
-        if (sc->re_rx_mbuf_sz <= MCLBYTES)
-                size = MCLBYTES;
-        else if (sc->re_rx_mbuf_sz <=  MJUMPAGESIZE)
-                size = MJUMPAGESIZE;
-        else
-                size =MJUM9BYTES;
-        for (i = 0; i < RE_RX_BUF_NUM; i++) {
-                sc->re_desc.rx_buf[i] = m_getjcl(M_DONTWAIT, MT_DATA, M_PKTHDR, size);
-                if (!sc->re_desc.rx_buf[i]) {
-                        //device_printf(dev, "m_getcl fail!!!\n");
-                        error = ENXIO;
-                        //goto fail;
-                        return error;
-                }
-
-                sc->re_desc.rx_buf[i]->m_len = sc->re_desc.rx_buf[i]->m_pkthdr.len = size;
-#ifdef RE_FIXUP_RX
-                /*
-                 * This is part of an evil trick to deal with non-x86 platforms.
-                 * The RealTek chip requires RX buffers to be aligned on 64-bit
-                 * boundaries, but that will hose non-x86 machines. To get around
-                 * this, we leave some empty space at the start of each buffer
-                 * and for non-x86 hosts, we copy the buffer back six bytes
-                 * to achieve word alignment. This is slightly more efficient
-                 * than allocating a new buffer, copying the contents, and
-                 * discarding the old buffer.
-                 */
-                m_adj(sc->re_desc.rx_buf[i], RE_ETHER_ALIGN);
-#endif
-
-                error = bus_dmamap_create(sc->re_desc.re_rx_mtag, BUS_DMA_NOWAIT, &sc->re_desc.re_rx_dmamap[i]);
-                if (error) {
-                        //device_printf(dev, "bus_dmamap_create fail!!!\n");
-                        //goto fail;
-                        return error;
-                }
-        }
-
-        for (i = 0; i < RE_TX_BUF_NUM; i++) {
-                error = bus_dmamap_create(sc->re_desc.re_tx_mtag, BUS_DMA_NOWAIT, &sc->re_desc.re_tx_dmamap[i]);
-                if (error) {
-                        //device_printf(dev, "bus_dmamap_create fail!!!\n");
-                        //goto fail;
-                        return error;
-                }
-        }
-
-        return 0;
-}
-
-static void set_rxbufsize(struct re_softc *sc)
-{
-
-        //printf("set size\n");
-
-        struct ifnet		*ifp;
-        ifp = RE_GET_IFNET(sc);
-        sc->re_rx_desc_buf_sz = (ifp->if_mtu > ETHERMTU) ? ifp->if_mtu: ETHERMTU;
-        sc->re_rx_desc_buf_sz += (ETHER_VLAN_ENCAP_LEN + ETHER_HDR_LEN + ETHER_CRC_LEN + 1);
-        CSR_WRITE_2(sc, RE_RxMaxSize, sc->re_rx_desc_buf_sz);
-}
-#endif	/* !__DragonFly__ */
 
 static void re_enable_cfg9346_write(struct re_softc *sc)
 {
@@ -3517,12 +3074,7 @@ is_valid_ether_addr(const u_int8_t * addr)
 static inline void
 random_ether_addr(u_int8_t * dst)
 {
-#ifndef __DragonFly__
-        if (read_random(dst, 6) == 0)
-                arc4rand(dst, 6, 0);
-#else
 	karc4random_buf(dst, 6);
-#endif
 
         dst[0] &= 0xfe;
         dst[0] |= 0x02;
@@ -3978,21 +3530,13 @@ static void re_get_hw_mac_address(struct re_softc *sc, u_int8_t *eaddr)
         }
 
         if (!is_valid_ether_addr(eaddr)) {
-#ifndef __DragonFly__
-                device_printf(dev,"Invalid ether addr: %6D\n", eaddr, ":");
-#else
 		device_printf(dev, "Invalid ether addr: "
 		    "%02x:%02x:%02x:%02x:%02x:%02x\n",
 		    eaddr[0], eaddr[1], eaddr[2], eaddr[3], eaddr[4], eaddr[5]);
-#endif
                 random_ether_addr(eaddr);
-#ifndef __DragonFly__
-                device_printf(dev,"Random ether addr: %6D\n", eaddr, ":");
-#else
 		device_printf(dev, "Random ether addr: "
 		    "%02x:%02x:%02x:%02x:%02x:%02x\n",
 		    eaddr[0], eaddr[1], eaddr[2], eaddr[3], eaddr[4], eaddr[5]);
-#endif
         }
 
         re_rar_set(sc, eaddr);
@@ -4460,11 +4004,7 @@ static void re_init_software_variable(struct re_softc *sc)
 
                                 CmacMemPhysAddress &=  0xFFFFFFF0;
                                 /* ioremap MMIO region */
-#ifndef __DragonFly__
-                                sc->re_mapped_cmac_tag = X86_BUS_SPACE_MEM;
-#else
 				sc->re_mapped_cmac_tag = X86_64_BUS_SPACE_MEM;
-#endif
                                 if (bus_space_map(sc->re_mapped_cmac_tag, CmacMemPhysAddress, RE_REGS_SIZE, 0,
                                                   &cmac_ioaddr))
                                         sc->re_dash = 0;
@@ -4664,16 +4204,12 @@ static void re_init_software_variable(struct re_softc *sc)
         case MACFG_41:
         case MACFG_42:
         case MACFG_43:
-#ifdef __DragonFly__
 	case MACFG_50:
-#endif
         case MACFG_54:
         case MACFG_55:
                 sc->re_coalesce_tx_pkt = TRUE;
-#ifdef __DragonFly__
 		if (sc->re_type != MACFG_50)
 			sc->re_pad_runt = TRUE;
-#endif
                 break;
         }
 
@@ -4788,9 +4324,6 @@ static void re_init_software_variable(struct re_softc *sc)
                 RE_UNLOCK(sc);
         }
 
-#ifndef __DragonFly__
-        sc->link_state = LINK_STATE_UNKNOWN;
-#endif
 
 #ifdef ENABLE_FIBER_SUPPORT
         if (HW_FIBER_MODE_ENABLED(sc))
@@ -4875,690 +4408,7 @@ static void re_hw_d3_para(struct re_softc *sc)
         }
 }
 
-#ifndef __DragonFly__
-/*
-* Attach the interface. Allocate softc structures, do ifmedia
-* setup and ethernet/BPF attach.
-*/
-static int re_attach(device_t dev)
-{
-        /*int			s;*/
-        u_char			eaddr[ETHER_ADDR_LEN];
-        u_int32_t		command;
-        struct re_softc		*sc;
-        struct ifnet		*ifp;
-        int			unit, error = 0, rid, i;
-//	int			mac_version;
-//	int			mode;
-//	u_int8_t		data8;
-        int     reg;
-        int		msic=0, msixc=0;
 
-        /*s = splimp();*/
-
-        sc = device_get_softc(dev);
-        unit = device_get_unit(dev);
-        bzero(sc, sizeof(struct re_softc));
-        RE_LOCK_INIT(sc,device_get_nameunit(dev));
-        sc->dev = dev;
-
-        sc->driver_detach = 0;
-
-        sc->re_vendor_id  = pci_get_vendor(dev);
-        sc->re_device_id = pci_get_device(dev);
-        sc->re_subvendor_id = pci_get_subvendor(dev);
-        sc->re_subdevice_id = pci_get_subdevice(dev);
-        sc->re_revid = pci_get_revid(dev);
-        pci_enable_busmaster(dev);
-
-        /*
-         * Map control/status registers.
-         */
-        command = pci_read_config(dev, PCIR_COMMAND, 4);
-        command |= (PCIM_CMD_PORTEN|PCIM_CMD_MEMEN|PCIM_CMD_BUSMASTEREN);
-        pci_write_config(dev, PCIR_COMMAND, command, 4);
-        command = pci_read_config(dev, PCIR_COMMAND, 4);
-
-        if (prefer_iomap == 0) {
-                sc->re_res_id = PCIR_BAR(1);
-                sc->re_res_type = SYS_RES_MEMORY;
-                /* PCIE NIC use different BARs. */
-                if (sc->re_device_id == RT_DEVICEID_8168 || sc->re_device_id == RT_DEVICEID_8161 ||
-                    sc->re_device_id == RT_DEVICEID_8136 || sc->re_device_id == RT_DEVICEID_8125)
-                        sc->re_res_id = PCIR_BAR(2);
-        } else {
-                sc->re_res_id = PCIR_BAR(0);
-                sc->re_res_type = SYS_RES_IOPORT;
-        }
-        sc->re_res = bus_alloc_resource(dev, sc->re_res_type, &sc->re_res_id,
-                                        0, ~0, 1, RF_ACTIVE);
-        if (sc->re_res == NULL && prefer_iomap == 0) {
-                sc->re_res_id = PCIR_BAR(0);
-                sc->re_res_type = SYS_RES_IOPORT;
-                sc->re_res = bus_alloc_resource(dev, sc->re_res_type, &sc->re_res_id,
-                                                0, ~0, 1, RF_ACTIVE);
-        }
-
-        if (sc->re_res == NULL) {
-                device_printf(dev,"couldn't map ports/memory\n");
-                error = ENXIO;
-                goto fail;
-        }
-
-        if (sc->re_res_type == SYS_RES_IOPORT)
-                device_printf(dev, "Using I/O Ports\n");
-        else
-                device_printf(dev, "Using Memory Mapping!\n");
-
-        sc->re_btag = rman_get_bustag(sc->re_res);
-        sc->re_bhandle = rman_get_bushandle(sc->re_res);
-
-        error = re_check_mac_version(sc);
-
-        if (error) {
-                goto fail;
-        }
-
-        re_init_software_variable(sc);
-
-#if OS_VER >= VERSION(7,0)
-        msic = pci_msi_count(dev);
-        msixc = pci_msix_count(dev);
-        if (pci_find_cap(dev, PCIY_EXPRESS, &reg) == 0) {
-                sc->re_if_flags |= RL_FLAG_PCIE;
-                sc->re_expcap = reg;
-        } else {
-                sc->re_if_flags &= ~RL_FLAG_PCIE;
-                sc->re_expcap = 0;
-        }
-
-        //device_printf(dev, "MSI count : %d\n", msic);
-        //device_printf(dev, "MSI-X count : %d\n", msixc);
-        if (sc->re_hw_enable_msi_msix == FALSE) {
-                msixc = 0;
-                msic = 0;
-        }
-        if (msix_disable > 0)
-                msixc = 0;
-        if (msi_disable > 0)
-                msic = 0;
-
-        /* Prefer MSI-X to MSI. */
-        if (msixc > 0) {
-                rid = PCIR_BAR(4);
-                msixc = RL_MSI_MESSAGES;
-                sc->re_res_pba = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
-                                                        &rid, RF_ACTIVE);
-                if (sc->re_res_pba == NULL) {
-                        device_printf(dev,
-                                      "could not allocate MSI-X PBA resource\n");
-                }
-                if (sc->re_res_pba != NULL &&
-                    pci_alloc_msix(dev, &msixc) == 0) {
-                        if (msixc == RL_MSI_MESSAGES) {
-                                device_printf(dev, "Using %d MSI-X message\n",
-                                              msixc);
-                                sc->re_if_flags |= RL_FLAG_MSIX;
-                        } else
-                                pci_release_msi(dev);
-                }
-                if ((sc->re_if_flags & RL_FLAG_MSIX) == 0) {
-                        if (sc->re_res_pba != NULL)
-                                bus_release_resource(dev, SYS_RES_MEMORY, rid,
-                                                     sc->re_res_pba);
-                        sc->re_res_pba = NULL;
-                        msixc = 0;
-                }
-        }
-
-        /* Prefer MSI to INTx. */
-        if (msixc == 0 && msic > 0) {
-                msic = RL_MSI_MESSAGES;
-                if (pci_alloc_msi(dev, &msic) == 0) {
-                        if (msic == RL_MSI_MESSAGES) {
-                                device_printf(dev, "Using %d MSI message\n",
-                                              msic);
-                                sc->re_if_flags |= RL_FLAG_MSI;
-                        } else
-                                pci_release_msi(dev);
-                }
-                if ((sc->re_if_flags & RL_FLAG_MSI) == 0)
-                        msic = 0;
-        }
-#endif //OS_VER >= VERSION(7,0)
-
-        if ((sc->re_if_flags & (RL_FLAG_MSI | RL_FLAG_MSIX)) == 0) {
-                rid = 0;
-                sc->re_irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
-                                                RF_SHAREABLE | RF_ACTIVE);
-
-                if (sc->re_irq == NULL) {
-                        device_printf(dev,"couldn't map interrupt\n");
-                        error = ENXIO;
-                        goto fail;
-                }
-                device_printf(dev, "Using line-based interrupt\n");
-        } else {
-                rid = 1;
-                sc->re_irq = bus_alloc_resource_any(dev,
-                                                    SYS_RES_IRQ, &rid, RF_ACTIVE);
-                if (sc->re_irq == NULL) {
-                        device_printf(dev,
-                                      "couldn't allocate IRQ resources for "
-                                      "message %d\n", rid);
-                        error = ENXIO;
-                        goto fail;
-                }
-        }
-
-#if OS_VER >= VERSION(7,3)
-        /* Disable ASPM L0S/L1 and Clock Request. */
-        if (sc->re_expcap != 0) {
-                u_int32_t		cap, ctl;
-                cap = pci_read_config(dev, sc->re_expcap +
-                                      RE_PCIER_LINK_CAP, 2);
-                if ((cap & RE_PCIEM_LINK_CAP_ASPM) != 0) {
-                        ctl = pci_read_config(dev, sc->re_expcap +
-                                              RE_PCIER_LINK_CTL, 2);
-                        if ((ctl & 0x0103) != 0) {
-                                ctl &= ~0x0103;
-                                pci_write_config(dev, sc->re_expcap +
-                                                 RE_PCIER_LINK_CTL, ctl, 2);
-                                device_printf(dev, "ASPM disabled\n");
-                        }
-                } else
-                        device_printf(dev, "no ASPM capability\n");
-        }
-#endif //OS_VER >= VERSION(7,3)
-
-        re_init_timer(sc);
-
-        RE_LOCK(sc);
-        re_exit_oob(sc);
-        re_hw_init(sc);
-        RE_UNLOCK(sc);
-
-        /*
-         * Reset the adapter. Only take the lock here as it's needed in
-         * order to call re_reset().
-         */
-        RE_LOCK(sc);
-        re_reset(sc);
-        RE_UNLOCK(sc);
-
-        /* Get station address. */
-        RE_LOCK(sc);
-        re_get_hw_mac_address(sc, eaddr);
-        RE_UNLOCK(sc);
-
-        /*
-         * A RealTek chip was detected. Inform the world.
-         */
-        device_printf(dev,"version:%s\n", RE_VERSION);
-        device_printf(dev,"Ethernet address: %6D\n", eaddr, ":");
-        printf("\nThis product is covered by one or more of the following patents: \
-           \nUS6,570,884, US6,115,776, and US6,327,625.\n");
-
-        sc->re_unit = unit;
-
-#if OS_VER < VERSION(6,0)
-        bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
-#endif
-
-        if (sc->re_type == MACFG_3) {	/* Change PCI Latency time*/
-                pci_write_config(dev, RE_PCI_LATENCY_TIMER, 0x40, 1);
-        }
-
-        error = bus_dma_tag_create(
-#if OS_VER < VERSION(7,0)
-                        NULL,
-#else
-                        bus_get_dma_tag(dev),		/* parent */
-#endif
-                        1, 0,		/* alignment, boundary */
-                        BUS_SPACE_MAXADDR,		/* lowaddr */
-                        BUS_SPACE_MAXADDR,		/* highaddr */
-                        NULL, NULL,			/* filter, filterarg */
-                        BUS_SPACE_MAXSIZE_32BIT,	/* maxsize */
-                        0,				/* nsegments */
-                        BUS_SPACE_MAXSIZE_32BIT,	/* maxsegsize */
-                        0,				/* flags */
-                        NULL, NULL,			/* lockfunc, lockarg */
-                        &sc->re_parent_tag);
-
-        i = roundup2(sizeof(union RxDesc)*RE_RX_BUF_NUM, RE_DESC_ALIGN);
-        error = bus_dma_tag_create(
-                        sc->re_parent_tag,
-                        RE_DESC_ALIGN, 0,		/* alignment, boundary */
-                        BUS_SPACE_MAXADDR,		/* lowaddr */
-                        BUS_SPACE_MAXADDR,		/* highaddr */
-                        NULL, NULL,			/* filter, filterarg */
-                        i,				/* maxsize */
-                        1,				/* nsegments */
-                        i,				/* maxsegsize */
-                        0,				/* flags */
-                        NULL, NULL,			/* lockfunc, lockarg */
-                        &sc->re_desc.rx_desc_tag);
-        if (error) {
-                device_printf(dev,"bus_dma_tag_create fail\n");
-                goto fail;
-        }
-
-        error = bus_dmamem_alloc(sc->re_desc.rx_desc_tag,
-                                 (void**) &sc->re_desc.rx_desc,
-                                 BUS_DMA_WAITOK|BUS_DMA_COHERENT|BUS_DMA_ZERO,
-                                 &sc->re_desc.rx_desc_dmamap);
-        if (error) {
-                device_printf(dev,"bus_dmamem_alloc fail\n");
-                goto fail;
-        }
-
-        i = roundup2(sizeof(union TxDesc)*RE_TX_BUF_NUM, RE_DESC_ALIGN);
-        error = bus_dma_tag_create(
-                        sc->re_parent_tag,
-                        RE_DESC_ALIGN, 0,		/* alignment, boundary */
-                        BUS_SPACE_MAXADDR,		/* lowaddr */
-                        BUS_SPACE_MAXADDR,		/* highaddr */
-                        NULL, NULL,			/* filter, filterarg */
-                        i,				/* maxsize */
-                        1,				/* nsegments */
-                        i,				/* maxsegsize */
-                        0,				/* flags */
-                        NULL, NULL,			/* lockfunc, lockarg */
-                        &sc->re_desc.tx_desc_tag);
-        if (error) {
-                device_printf(dev,"bus_dma_tag_create fail\n");
-                goto fail;
-        }
-
-        error = bus_dmamem_alloc(sc->re_desc.tx_desc_tag,
-                                 (void**) &sc->re_desc.tx_desc,
-                                 BUS_DMA_WAITOK|BUS_DMA_COHERENT|BUS_DMA_ZERO,
-                                 &sc->re_desc.tx_desc_dmamap);
-
-        if (error) {
-                device_printf(dev,"bus_dmamem_alloc fail\n");
-                goto fail;
-        }
-
-        sc->re_tx_cstag =1;
-        sc->re_rx_cstag =1;
-
-#if OS_VER < VERSION(6,0)
-        ifp = &sc->arpcom.ac_if;
-#else
-        ifp = sc->re_ifp = if_alloc(IFT_ETHER);
-        if (ifp == NULL) {
-                device_printf(dev, "can not if_alloc()\n");
-                error = ENOSPC;
-                goto fail;
-        }
-#endif
-        ifp->if_softc = sc;
-#if OS_VER < VERSION(5,3)
-        ifp->if_unit = unit;
-        ifp->if_name = "re";
-#else
-        if_initname(ifp, device_get_name(dev), device_get_unit(dev));
-#endif
-        ifp->if_mtu = ETHERMTU;
-        ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-        ifp->if_ioctl = re_ioctl;
-        ifp->if_output = ether_output;
-        ifp->if_start = re_start;
-#if OS_VER < VERSION(7,0)
-        ifp->if_watchdog = re_watchdog;
-#endif
-        if ((sc->re_type == MACFG_24) || (sc->re_type == MACFG_25) || (sc->re_type == MACFG_26))
-                ifp->if_hwassist |= CSUM_TCP | CSUM_UDP;
-        else
-                ifp->if_hwassist |= RE_CSUM_FEATURES;
-
-        ifp->if_capabilities = IFCAP_HWCSUM;
-        ifp->if_capenable = ifp->if_capabilities;
-        ifp->if_init = re_init;
-        /* VLAN capability setup */
-        ifp->if_capabilities |= IFCAP_VLAN_MTU | IFCAP_VLAN_HWTAGGING;
-        ifp->if_capenable = ifp->if_capabilities;
-
-        /* Enable WOL if PM is supported. */
-        if (pci_find_cap(sc->dev, PCIY_PMG, &reg) == 0)
-                ifp->if_capabilities |= IFCAP_WOL;
-        ifp->if_capenable = ifp->if_capabilities;
-        ifp->if_capenable &= ~(IFCAP_WOL_UCAST | IFCAP_WOL_MCAST);
-
-        RE_LOCK(sc);
-        re_phy_power_up(dev);
-        re_hw_phy_config(sc);
-        re_clrwol(sc);
-
-        set_rxbufsize(sc);
-        error =re_alloc_buf(sc);
-
-        if (error) {
-                RE_UNLOCK(sc);
-                goto fail;
-        }
-        /* Init descriptors. */
-        re_var_init(sc);
-
-        RE_UNLOCK(sc);
-
-        switch(sc->re_device_id) {
-        case RT_DEVICEID_8125:
-                ifp->if_baudrate = 25000000000;
-                break;
-        case RT_DEVICEID_8169:
-        case RT_DEVICEID_8169SC:
-        case RT_DEVICEID_8168:
-        case RT_DEVICEID_8161:
-                ifp->if_baudrate = 1000000000;
-                break;
-        default:
-                ifp->if_baudrate = 100000000;
-                break;
-        }
-        IFQ_SET_MAXLEN(&ifp->if_snd, IFQ_MAXLEN);
-        ifp->if_snd.ifq_drv_maxlen = IFQ_MAXLEN;
-        IFQ_SET_READY(&ifp->if_snd);
-
-        if (sc->re_device_id == RT_DEVICEID_8125) {
-                sc->ifmedia_upd = re_ifmedia_upd_8125;
-                sc->ifmedia_sts = re_ifmedia_sts_8125;
-                sc->intr = re_intr_8125;
-                sc->int_task = re_int_task_8125;
-                sc->hw_start_unlock = re_hw_start_unlock_8125;
-        } else {
-                sc->ifmedia_upd = re_ifmedia_upd;
-                sc->ifmedia_sts = re_ifmedia_sts;
-                sc->intr = re_intr;
-                sc->int_task = re_int_task;
-                sc->hw_start_unlock = re_hw_start_unlock;
-        }
-
-#if OS_VER>=VERSION(7,0)
-        TASK_INIT(&sc->re_inttask, 0, sc->int_task, sc);
-#endif
-
-        /*
-         * Call MI attach routine.
-         */
-        /*#if OS_VER < VERSION(5, 1)*/
-#if OS_VER < VERSION(4,9)
-        ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
-#else
-        ether_ifattach(ifp, eaddr);
-#endif
-
-#if OS_VER < VERSION(7,0)
-        error = bus_setup_intr(dev, sc->re_irq, INTR_TYPE_NET,
-                               sc->intr, sc, &sc->re_intrhand);
-#else
-        error = bus_setup_intr(dev, sc->re_irq, INTR_TYPE_NET|INTR_MPSAFE,
-                               sc->intr, NULL, sc, &sc->re_intrhand);
-#endif
-
-        if (error) {
-#if OS_VER < VERSION(4,9)
-                ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
-#else
-                ether_ifdetach(ifp);
-#endif
-                device_printf(dev,"couldn't set up irq\n");
-                goto fail;
-        }
-
-        /*
-         * Specify the media types supported by this adapter and register
-         * callbacks to update media and link information
-         */
-        ifmedia_init(&sc->media, IFM_IMASK, sc->ifmedia_upd, sc->ifmedia_sts);
-        ifmedia_add(&sc->media, IFM_ETHER | IFM_10_T, 0, NULL);
-        ifmedia_add(&sc->media, IFM_ETHER | IFM_10_T | IFM_FDX, 0, NULL);
-        ifmedia_add(&sc->media, IFM_ETHER | IFM_100_TX, 0, NULL);
-        ifmedia_add(&sc->media, IFM_ETHER | IFM_100_TX | IFM_FDX, 0, NULL);
-        switch(sc->re_device_id) {
-        case RT_DEVICEID_8125:
-        case RT_DEVICEID_8169:
-        case RT_DEVICEID_8169SC:
-        case RT_DEVICEID_8168:
-        case RT_DEVICEID_8161:
-                ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_T | IFM_FDX, 0, NULL);
-                //ifmedia_add(&sc->media, IFM_ETHER | IFM_1000_T, 0, NULL);
-                break;
-        default:
-                break;
-        }
-        switch(sc->re_device_id) {
-        case RT_DEVICEID_8125:
-                ifmedia_add(&sc->media, IFM_ETHER | IFM_2500_T | IFM_FDX, 0, NULL);
-                break;
-        default:
-                break;
-        }
-        ifmedia_add(&sc->media, IFM_ETHER | IFM_AUTO, 0, NULL);
-        ifmedia_set(&sc->media, IFM_ETHER | IFM_AUTO);
-        sc->media.ifm_media = IFM_ETHER | IFM_AUTO;
-        sc->ifmedia_upd(ifp);
-
-fail:
-        if (error)
-                re_detach(dev);
-
-        return(error);
-}
-
-static int re_detach(device_t dev)
-{
-        struct re_softc		*sc;
-        struct ifnet		*ifp;
-        /*int			s;*/
-        int			i;
-        int			rid;
-
-        /*s = splimp();*/
-
-        sc = device_get_softc(dev);
-
-        ifp = RE_GET_IFNET(sc);
-
-        /* These should only be active if attach succeeded */
-        if (device_is_attached(dev)) {
-                RE_LOCK(sc);
-                re_stop(sc);
-                RE_UNLOCK(sc);
-#if OS_VER>=VERSION(7,0)
-                taskqueue_drain(taskqueue_fast, &sc->re_inttask);
-#endif
-#if OS_VER < VERSION(4,9)
-                ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
-#else
-                ether_ifdetach(ifp);
-#endif
-        }
-
-        bus_generic_detach(dev);
-
-        sc->driver_detach = 1;
-
-        if (sc->re_intrhand)
-                bus_teardown_intr(dev, sc->re_irq, sc->re_intrhand);
-
-#if OS_VER>=VERSION(6,0)
-        if (ifp)
-                if_free(ifp);
-#endif
-
-        if ((sc->re_if_flags & (RL_FLAG_MSI | RL_FLAG_MSIX)) == 0)
-                rid = 0;
-        else
-                rid = 1;
-        if (sc->re_irq) {
-                bus_release_resource(dev, SYS_RES_IRQ, rid, sc->re_irq);
-                sc->re_irq = NULL;
-        }
-        if ((sc->re_if_flags & (RL_FLAG_MSI | RL_FLAG_MSIX)) != 0)
-                pci_release_msi(dev);
-        if (sc->re_res_pba) {
-                rid = PCIR_BAR(4);
-                bus_release_resource(dev, SYS_RES_MEMORY, rid, sc->re_res_pba);
-        }
-        if (sc->re_res)
-                bus_release_resource(dev, sc->re_res_type, sc->re_res_id, sc->re_res);
-
-        if (HW_DASH_SUPPORT_TYPE_3(sc) && sc->re_dash)
-                bus_space_unmap(sc->re_cmac_tag, sc->re_mapped_cmac_handle, RE_REGS_SIZE);
-
-        if (sc->re_desc.re_rx_mtag) {
-                for (i = 0; i < RE_RX_BUF_NUM; i++) {
-                        if (sc->re_desc.rx_buf[i]!=NULL) {
-                                bus_dmamap_sync(sc->re_desc.re_rx_mtag,
-                                                sc->re_desc.re_rx_dmamap[i],
-                                                BUS_DMASYNC_POSTREAD);
-                                bus_dmamap_unload(sc->re_desc.re_rx_mtag,
-                                                  sc->re_desc.re_rx_dmamap[i]);
-                                bus_dmamap_destroy(sc->re_desc.re_rx_mtag,
-                                                   sc->re_desc.re_rx_dmamap[i]);
-                                m_freem(sc->re_desc.rx_buf[i]);
-                                sc->re_desc.rx_buf[i] =NULL;
-                        }
-                }
-                bus_dma_tag_destroy(sc->re_desc.re_rx_mtag);
-                sc->re_desc.re_rx_mtag =0;
-        }
-
-        if (sc->re_desc.re_tx_mtag) {
-                for (i = 0; i < RE_TX_BUF_NUM; i++) {
-                        bus_dmamap_destroy(sc->re_desc.re_tx_mtag,
-                                           sc->re_desc.re_tx_dmamap[i]);
-                }
-                bus_dma_tag_destroy(sc->re_desc.re_tx_mtag);
-                sc->re_desc.re_tx_mtag =0;
-        }
-
-        if (sc->re_desc.rx_desc_tag) {
-                bus_dmamap_sync(sc->re_desc.rx_desc_tag,
-                                sc->re_desc.rx_desc_dmamap,
-                                BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE);
-                bus_dmamap_unload(sc->re_desc.rx_desc_tag,
-                                  sc->re_desc.rx_desc_dmamap);
-                bus_dmamem_free(sc->re_desc.rx_desc_tag,
-                                sc->re_desc.rx_desc,
-                                sc->re_desc.rx_desc_dmamap);
-                bus_dma_tag_destroy(sc->re_desc.rx_desc_tag);
-        }
-
-        if (sc->re_desc.tx_desc_tag) {
-                bus_dmamap_sync(sc->re_desc.tx_desc_tag,
-                                sc->re_desc.tx_desc_dmamap,
-                                BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE);
-                bus_dmamap_unload(sc->re_desc.tx_desc_tag,
-                                  sc->re_desc.tx_desc_dmamap);
-                bus_dmamem_free(sc->re_desc.tx_desc_tag,
-                                sc->re_desc.tx_desc,
-                                sc->re_desc.tx_desc_dmamap);
-                bus_dma_tag_destroy(sc->re_desc.tx_desc_tag);
-        }
-
-        if (sc->re_parent_tag) {
-                bus_dma_tag_destroy(sc->re_parent_tag);
-        }
-
-        /*splx(s);*/
-        RE_LOCK_DESTROY(sc);
-
-        return(0);
-}
-#endif	/* !__DragonFly__ */
-
-#ifndef __DragonFly__
-static void
-re_link_state_change(struct ifnet *ifp, int link_state)
-{
-#if OS_VER>=VERSION(6,0)
-        if_link_state_change(ifp, link_state);
-#else
-        ifp->if_link_state = link_state
-#endif
-}
-
-/*
-  * Device suspend routine.  Stop the interface and save some PCI
-  * settings in case the BIOS doesn't restore them properly on
-  * resume.
-  */
-static int
-re_suspend(device_t dev)
-{
-        struct re_softc         *sc;
-        struct ifnet            *ifp;
-
-        sc = device_get_softc(dev);
-        RE_LOCK(sc);
-        ifp = RE_GET_IFNET(sc);
-        sc->re_link_chg_det = 0;
-        sc->phy_reg_anlpar = re_get_phy_lp_ability(sc);
-        re_stop(sc);
-        re_hw_d3_para(sc);
-        re_setwol(sc);
-        sc->suspended = 1;
-        sc->link_state = LINK_STATE_UNKNOWN;
-        re_link_state_change(ifp, sc->link_state);
-        sc->prohibit_access_reg = 1;
-        RE_UNLOCK(sc);
-
-        return (0);
-}
-
-/*
- * Device resume routine.  Restore some PCI settings in case the BIOS
- * doesn't, re-enable busmastering, and restart the interface if
- * appropriate.
- */
-static int
-re_resume(device_t dev)
-{
-        struct re_softc         *sc;
-        struct ifnet            *ifp;
-
-        sc = device_get_softc(dev);
-
-        RE_LOCK(sc);
-
-        ifp = RE_GET_IFNET(sc);
-
-        sc->prohibit_access_reg = 0;
-
-        re_exit_oob(sc);
-
-        re_hw_init(sc);
-
-        re_reset(sc);
-
-        re_phy_power_up(dev);
-
-        re_hw_phy_config(sc);
-
-        /*
-         * Clear WOL matching such that normal Rx filtering
-         * wouldn't interfere with WOL patterns.
-         */
-        re_clrwol(sc);
-
-        RE_UNLOCK(sc);
-
-        RE_LOCK(sc);
-        sc->ifmedia_upd(ifp);
-        sc->suspended = 0;
-        if (ifp->if_flags & IFF_UP) {
-                sc->re_link_chg_det = 1;
-                re_start_timer(sc);
-        }
-        RE_UNLOCK(sc);
-
-        return (0);
-}
-#endif	/* !__DragonFly__ */
 
 
 static void
@@ -5605,42 +4455,6 @@ SetPCIePhyBit(
                              );
 }
 
-#ifndef __DragonFly__
-/*
- * Stop all chip I/O so that the kernel's probe routines don't
- * get confused by errant DMAs when rebooting.
- */
-static int re_shutdown(dev)	/* The same with re_stop(sc) */
-device_t		dev;
-{
-        struct re_softc		*sc;
-
-        sc = device_get_softc(dev);
-
-        if (sc->re_dash)
-                re_driver_stop(sc);
-
-        RE_LOCK(sc);
-        sc->re_link_chg_det = 0;
-        sc->phy_reg_anlpar = re_get_phy_lp_ability(sc);
-        re_stop(sc);
-        RE_UNLOCK(sc);
-
-        RE_LOCK(sc);
-        re_hw_d3_para(sc);
-        if (s5wol == 0) {
-                re_phy_power_down(dev);
-        } else {
-                struct ifnet            *ifp;
-                ifp = RE_GET_IFNET(sc);
-                ifp->if_capenable = IFCAP_WOL_MAGIC;
-                re_setwol(sc);
-        }
-        RE_UNLOCK(sc);
-
-        return 0;
-}
-#endif	/* !__DragonFly__ */
 
 static void re_hw_start_unlock(struct re_softc *sc)
 {
@@ -5652,10 +4466,6 @@ static void re_hw_start_unlock(struct re_softc *sc)
 
         ifp = RE_GET_IFNET(sc);
 
-#ifndef __DragonFly__
-        /* Init descriptors. */
-        re_var_init(sc);
-#endif
 
         re_enable_cfg9346_write(sc);
 
@@ -7151,26 +5961,12 @@ static void re_hw_start_unlock(struct re_softc *sc)
                 CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_TX_ENB | RE_CMD_RX_ENB);
         }
 
-#ifndef __DragonFly__
-        ifp->if_drv_flags |= IFF_DRV_RUNNING;
-        ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
-
-        /*
-        * Enable interrupts.
-        */
-        CSR_WRITE_2(sc, RE_IMR, RE_INTRS);
-#endif
 }
 
 static void re_init_unlock(void *xsc)  	/* Software & Hardware Initialize */
 {
         struct re_softc		*sc = xsc;
         struct ifnet		*ifp;
-#ifndef __DragonFly__
-#if OS_VER < VERSION(6,0)
-        int			i;
-#endif
-#endif	/* !__DragonFly__ */
         union {
                 uint32_t align_dummy;
                 u_char eaddr[ETHER_ADDR_LEN];
@@ -7178,57 +5974,17 @@ static void re_init_unlock(void *xsc)  	/* Software & Hardware Initialize */
 
         ifp = RE_GET_IFNET(sc);
 
-#ifndef __DragonFly__
-        /*
-         * Cancel pending I/O and free all RX/TX buffers.
-         */
-        re_stop(sc);
-#endif	/* !__DragonFly__ */
 
         /* Copy MAC address on stack to align. */
-#ifndef __DragonFly__
-#if OS_VER < VERSION(6,0)
-        bcopy((char *)&sc->arpcom.ac_enaddr, eaddr.eaddr, ETHER_ADDR_LEN);
-#elif OS_VER < VERSION(7,0)
-        bcopy(IFP2ENADDR(ifp), eaddr.eaddr, ETHER_ADDR_LEN);
-#else
         bcopy(IF_LLADDR(ifp), eaddr.eaddr, ETHER_ADDR_LEN);
-#endif
-#else	/* __DragonFly__ */
-        bcopy(IF_LLADDR(ifp), eaddr.eaddr, ETHER_ADDR_LEN);
-#endif	/* !__DragonFly__ */
 
         /* Init our MAC address */
         re_rar_set(sc, eaddr.eaddr);
 
-#ifndef __DragonFly__
-        sc->hw_start_unlock(sc);
-#endif
 
         return;
 }
 
-#ifndef __DragonFly__
-static void re_init(void *xsc)  	/* Software & Hardware Initialize */
-{
-        struct re_softc		*sc = xsc;
-        struct ifnet		*ifp;
-
-        RE_LOCK(sc);
-        ifp = RE_GET_IFNET(sc);
-
-        if (re_link_ok(sc)) {
-                sc->link_state = LINK_STATE_UP;
-                re_link_state_change(ifp, sc->link_state);
-                re_link_on_patch(sc);
-        }
-
-        sc->re_link_chg_det = 1;
-        re_start_timer(sc);
-
-        RE_UNLOCK(sc);
-}
-#endif	/* !__DragonFly__ */
 
 static void re_hw_start_unlock_8125(struct re_softc *sc)
 {
@@ -7240,10 +5996,6 @@ static void re_hw_start_unlock_8125(struct re_softc *sc)
 
         ifp = RE_GET_IFNET(sc);
 
-#ifndef __DragonFly__
-        /* Init descriptors. */
-        re_var_init(sc);
-#endif
 
         re_enable_cfg9346_write(sc);
 
@@ -7543,84 +6295,8 @@ static void re_hw_start_unlock_8125(struct re_softc *sc)
         /* Enable transmit and receive.*/
         CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_TX_ENB | RE_CMD_RX_ENB);
 
-#ifndef __DragonFly__
-        ifp->if_drv_flags |= IFF_DRV_RUNNING;
-        ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
-
-        /*
-        * Enable interrupts.
-        */
-        CSR_WRITE_4(sc, RE_IMR0_8125, RE_INTRS);
-#endif	/* !__DragonFly__ */
 }
 
-#ifndef __DragonFly__
-/*
- * Initialize the transmit descriptors.
- */
-static int re_var_init(struct re_softc *sc)
-{
-        int			i;
-        union RxDesc *rxptr;
-        union TxDesc *txptr;
-
-        sc->re_desc.rx_cur_index = 0;
-        sc->re_desc.rx_last_index = 0;
-        rxptr = sc->re_desc.rx_desc;
-        for (i = 0; i < RE_RX_BUF_NUM; i++) {
-                memset(&rxptr[i], 0, sizeof(union RxDesc));
-
-                /* Init the RX buffer pointer register. */
-                bus_dmamap_load(sc->re_desc.re_rx_mtag,
-                                sc->re_desc.re_rx_dmamap[i],
-                                sc->re_desc.rx_buf[i]->m_data, sc->re_rx_desc_buf_sz,
-                                re_rx_dma_map_buf,
-                                &rxptr[i],
-                                0);
-                bus_dmamap_sync(sc->re_desc.re_rx_mtag,
-                                sc->re_desc.re_rx_dmamap[i],
-                                BUS_DMASYNC_PREREAD);
-
-                rxptr[i].ul[0] = htole32(sc->re_rx_desc_buf_sz);
-                if (i == (RE_RX_BUF_NUM - 1))
-                        rxptr[i].ul[0] |= htole32(RL_RDESC_CMD_EOR);
-                rxptr[i].ul[0] |= htole32(RL_RDESC_CMD_OWN);
-        }
-
-        bus_dmamap_load(sc->re_desc.rx_desc_tag,
-                        sc->re_desc.rx_desc_dmamap,
-                        sc->re_desc.rx_desc,
-                        sizeof(union RxDesc)*RE_RX_BUF_NUM,
-                        re_dma_map_rxdesc,
-                        sc,
-                        0);
-        bus_dmamap_sync(sc->re_desc.rx_desc_tag,
-                        sc->re_desc.rx_desc_dmamap,
-                        BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE);
-
-        sc->re_desc.tx_cur_index = 0;
-        sc->re_desc.tx_last_index = 0;
-        txptr = sc->re_desc.tx_desc;
-        for (i = 0; i < RE_TX_BUF_NUM; i++) {
-                memset(&txptr[i], 0, sizeof(union TxDesc));
-                if (i == (RE_TX_BUF_NUM - 1))
-                        txptr[i].ul[0] = htole32(RL_TDESC_CMD_EOR);
-        }
-
-        bus_dmamap_load(sc->re_desc.tx_desc_tag,
-                        sc->re_desc.tx_desc_dmamap,
-                        sc->re_desc.tx_desc,
-                        sizeof(union RxDesc) * RE_TX_BUF_NUM,
-                        re_dma_map_txdesc,
-                        sc,
-                        0);
-        bus_dmamap_sync(sc->re_desc.tx_desc_tag,
-                        sc->re_desc.tx_desc_dmamap,
-                        BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE);
-
-        return 0;
-}
-#endif	/* !__DragonFly__ */
 
 static void re_reset(struct re_softc *sc)
 {
@@ -7783,81 +6459,6 @@ re_set_wol_linkspeed(struct re_softc *sc)
         }
 }
 
-#ifndef __DragonFly__
-static void
-re_setwol(struct re_softc *sc)
-{
-        struct ifnet            *ifp;
-        int                     pmc;
-        uint16_t                pmstat;
-        uint8_t                 v;
-
-        RE_LOCK_ASSERT(sc);
-
-        ifp = RE_GET_IFNET(sc);
-
-        if ((ifp->if_capenable & IFCAP_WOL) == 0) {
-                re_phy_power_down(sc->dev);
-                return;
-        }
-
-        if (pci_find_cap(sc->dev, PCIY_PMG, &pmc) != 0)
-                return;
-
-        /* Enable config register write. */
-        re_enable_cfg9346_write(sc);
-
-        /* Enable PME. */
-        if (sc->re_device_id==RT_DEVICEID_8169 || sc->re_device_id==RT_DEVICEID_8169SC) {
-                v = CSR_READ_1(sc, RE_CFG1);
-                v &= ~RE_CFG1_PME;
-                if ((ifp->if_capenable & IFCAP_WOL) != 0)
-                        v |= RE_CFG1_PME;
-                CSR_WRITE_1(sc, RE_CFG1, v);
-        }
-
-        if (ifp->if_capenable & IFCAP_WOL_MAGIC)
-                re_enable_magic_packet(sc);
-        else
-                re_disable_magic_packet(sc);
-
-        v = CSR_READ_1(sc, RE_CFG5);
-        v &= ~(RL_CFG5_WOL_BCAST | RL_CFG5_WOL_MCAST | RL_CFG5_WOL_UCAST |
-               RL_CFG5_WOL_LANWAKE);
-
-        if ((ifp->if_capenable & IFCAP_WOL_UCAST) != 0)
-                v |= RL_CFG5_WOL_UCAST;
-        if ((ifp->if_capenable & IFCAP_WOL_MCAST) != 0)
-                v |= RL_CFG5_WOL_MCAST | RL_CFG5_WOL_BCAST;
-        if ((ifp->if_capenable & IFCAP_WOL) != 0)
-                v |= RL_CFG5_WOL_LANWAKE;
-        CSR_WRITE_1(sc, RE_CFG5, v);
-
-        /* Config register write done. */
-        re_disable_cfg9346_write(sc);
-
-        /*
-         * It seems that hardware resets its link speed to 100Mbps in
-         * power down mode so switching to 100Mbps in driver is not
-         * needed.
-         */
-
-        /* Request PME if WOL is requested. */
-        pmstat = pci_read_config(sc->dev, pmc + PCIR_POWER_STATUS, 2);
-        pmstat &= ~(PCIM_PSTAT_PMEENABLE);
-        if ((ifp->if_capenable & IFCAP_WOL) != 0)
-                pmstat |= PCIM_PSTAT_PMEENABLE;
-        pci_write_config(sc->dev, pmc + PCIR_POWER_STATUS, pmstat, 2);
-
-        /* Put controller into sleep mode. */
-        if ((ifp->if_capenable & IFCAP_WOL) != 0) {
-                re_set_rx_packet_filter_in_sleep_state(sc);
-                re_set_wol_linkspeed(sc);
-                if (sc->re_type == MACFG_21 || sc->re_type == MACFG_22)
-                        CSR_WRITE_1(sc, RE_COMMAND, RE_CMD_RX_ENB);
-        }
-}
-#endif	/* !__DragonFly__ */
 
 static void
 re_clrwol(struct re_softc *sc)
@@ -7868,13 +6469,8 @@ re_clrwol(struct re_softc *sc)
 
         RE_LOCK_ASSERT(sc);
 
-#ifndef __DragonFly__
-        if (pci_find_cap(sc->dev, PCIY_PMG, &pmc) != 0)
-                return;
-#else
 	if (pci_find_extcap(sc->dev, PCIY_PMG, &pmc) != 0)
                 return;
-#endif
 
         /* Disable PME and clear PME status. */
         pmstat = pci_read_config(sc->dev, pmc + PCIR_POWER_STATUS, 2);
@@ -7909,25 +6505,9 @@ re_clrwol(struct re_softc *sc)
  * Stop the adapter and free any mbufs allocated to the
  * RX and TX lists.
  */
-#ifndef __DragonFly__
-static void re_stop(struct re_softc *sc)  	/* Stop Driver */
-#else	/* __DragonFly__ */
 static void
 re_stop_rtl(struct re_softc *sc)
-#endif	/* !__DragonFly__ */
 {
-#ifndef __DragonFly__
-        struct ifnet		*ifp;
-
-        /*	RE_LOCK_ASSERT(sc);*/
-
-        ifp = RE_GET_IFNET(sc);
-#if OS_VER < VERSION(9,0)
-        ifp->if_timer = 0;
-#endif
-
-        re_stop_timer(sc);
-#endif	/* !__DragonFly__ */
 
         /*
          * Disable accepting frames to put RX MAC into idle state.
@@ -7955,749 +6535,8 @@ re_stop_rtl(struct re_softc *sc)
         }
         re_reset(sc);
 
-#ifndef __DragonFly__
-        /*
-         * Free the TX list buffers.
-         */
-        while (sc->re_desc.tx_last_index!=sc->re_desc.tx_cur_index) {
-                if (sc->re_desc.re_tx_mtag) {
-                        bus_dmamap_sync(sc->re_desc.re_tx_mtag,
-                                        sc->re_desc.re_tx_dmamap[sc->re_desc.tx_last_index],
-                                        BUS_DMASYNC_POSTWRITE);
-                        bus_dmamap_unload(sc->re_desc.re_tx_mtag,
-                                          sc->re_desc.re_tx_dmamap[sc->re_desc.tx_last_index]);
-                }
-
-                if (sc->re_desc.tx_buf[sc->re_desc.tx_last_index]!=NULL) {
-                        m_freem(sc->re_desc.tx_buf[sc->re_desc.tx_last_index]);
-                        sc->re_desc.tx_buf[sc->re_desc.tx_last_index] = NULL;
-                }
-                sc->re_desc.tx_last_index = (sc->re_desc.tx_last_index+1)%RE_TX_BUF_NUM;
-        }
-
-        ifp->if_drv_flags &= ~(IFF_DRV_RUNNING | IFF_DRV_OACTIVE);
-
-        return;
-#endif	/* !__DragonFly__ */
 }
 
-#ifndef __DragonFly__
-/*
- * Main transmit routine.
- */
-static void re_start(struct ifnet *ifp)  	/* Transmit Packet*/
-{
-        struct re_softc		*sc;
-        struct mbuf		*m_head = NULL;
-
-        sc = ifp->if_softc;	/* Paste to ifp in function re_attach(dev) */
-
-        RE_LOCK(sc);
-
-        /*	RE_LOCK_ASSERT(sc);*/
-
-        if ((sc->driver_detach == 1) || (sc->rx_fifo_overflow != 0)) {
-                RE_UNLOCK(sc);
-                return;
-        }
-
-        while (1) {
-                int fs = 1, ls = 0, TxLen = 0, PktLen;
-                struct mbuf *ptr;
-                uint32_t  opts1 =0;
-                uint32_t  opts2 =0;
-                IFQ_DRV_DEQUEUE(&ifp->if_snd, m_head);	/* Remove(get) data from system transmit queue */
-                if (m_head == NULL) {
-                        break;
-                }
-
-                if (sc->re_coalesce_tx_pkt) {
-                        if (re_encap(sc, m_head)) {
-                                IFQ_DRV_PREPEND(&ifp->if_snd, m_head);
-                                ifp->if_drv_flags |= IFF_DRV_OACTIVE;
-                                break;
-                        }
-
-                        m_head = sc->re_desc.tx_buf[sc->re_desc.tx_cur_index];
-                }
-
-                if (CountMbufNum(m_head) > CountFreeTxDescNum(sc->re_desc)) {	/* No enough descriptor */
-                        IFQ_DRV_PREPEND(&ifp->if_snd, m_head);
-                        ifp->if_drv_flags |= IFF_DRV_OACTIVE;
-                        break;
-                }
-
-                if (ifp->if_bpf) {		/* If there's a BPF listener, bounce a copy of this frame to him. */
-                        //printf("If there's a BPF listener, bounce a copy of this frame to him. \n");
-
-                        /*#if OS_VER < VERSION(5, 1)*/
-#if OS_VER < VERSION(4,9)
-                        bpf_mtap(ifp, m_head);
-#else
-                        bpf_mtap(ifp->if_bpf, m_head);
-#endif
-                }
-
-                //hw checksum
-                if (ifp->if_capenable & IFCAP_TXCSUM) {
-                        if ((m_head->m_pkthdr.csum_flags & RE_CSUM_FEATURES) !=0) 	{
-                                if (!(sc->re_if_flags & RL_FLAG_DESCV2)) {
-                                        opts1 |= RL_IPV4CS1;
-                                        if ((m_head->m_pkthdr.csum_flags & CSUM_TCP)!=0)
-                                                opts1 |=RL_TCPCS1;
-                                        if ((m_head->m_pkthdr.csum_flags & CSUM_UDP)!=0)
-                                                opts1 |=RL_UDPCS1;
-                                } else {
-                                        opts2 |=  RL_IPV4CS;
-                                        if ((m_head->m_pkthdr.csum_flags & CSUM_TCP)!=0)
-                                                opts2 |= RL_TCPCS;
-                                        else if ((m_head->m_pkthdr.csum_flags & CSUM_UDP)!=0)
-                                                opts2 |= RL_UDPCS;
-                                }
-                        }
-                }
-
-                //vlan
-                if (m_head->m_flags & M_VLANTAG)
-                        opts2 |= bswap16(m_head->m_pkthdr.ether_vtag) | RL_TDESC_VLANCTL_TAG;
-                ptr = m_head;
-                PktLen = ptr->m_pkthdr.len;
-#ifdef _DEBUG_
-                printf("PktLen=%d",PktLen);
-#endif
-                while (ptr!=NULL) {
-                        if (ptr->m_len >0) {
-#ifdef _DEBUG_
-                                printf(", len=%d T=%d F=%d",ptr->m_len,ptr->m_type,ptr->m_flags);
-#endif
-                                TxLen += ptr->m_len;
-                                if (TxLen >= PktLen) {
-                                        ls=1;
-                                        sc->re_desc.tx_buf[sc->re_desc.tx_cur_index] = m_head;
-                                } else
-                                        sc->re_desc.tx_buf[sc->re_desc.tx_cur_index] = NULL;
-
-                                //vlan
-                                WritePacket(sc,ptr->m_data,ptr->m_len,fs,ls,opts2,opts1);
-
-                                fs=0;
-                        }
-                        ptr = ptr->m_next;
-                }
-#ifdef _DEBUG_
-                printf("\n");
-#endif
-        }
-#if OS_VER < VERSION(9,0)
-        ifp->if_timer = 5;
-#endif
-
-        RE_UNLOCK(sc);
-
-        return;
-}
-
-/*
- * Encapsulate an mbuf chain in a descriptor by coupling the mbuf data
- * pointers to the fragment pointers.
- */
-static int re_encap(struct re_softc *sc,struct mbuf *m_head)
-{
-        struct mbuf		*m_new = NULL;
-
-        m_new = m_defrag(m_head, M_DONTWAIT);
-
-        if (m_new == NULL) {
-                printf("re%d: no memory for tx list", sc->re_unit);
-                return (1);
-        }
-        m_head = m_new;
-
-        /* Pad frames to at least 60 bytes. */
-        if (m_head->m_pkthdr.len < RE_MIN_FRAMELEN) {	/* Case length < 60 bytes */
-                /*
-                 * Make security concious people happy: zero out the
-                 * bytes in the pad area, since we don't know what
-                 * this mbuf cluster buffer's previous user might
-                 * have left in it.
-                 */
-                bzero(mtod(m_head, char *) + m_head->m_pkthdr.len,
-                      RE_MIN_FRAMELEN - m_head->m_pkthdr.len);
-                m_head->m_pkthdr.len = RE_MIN_FRAMELEN;
-                m_head->m_len = m_head->m_pkthdr.len;
-        }
-
-        sc->re_desc.tx_buf[sc->re_desc.tx_cur_index] = m_head;
-
-        return(0);
-}
-
-static void WritePacket(struct re_softc	*sc, caddr_t addr, int len,int fs_flag,int ls_flag, uint32_t opts2,uint32_t opts1)
-{
-        union TxDesc *txptr;
-        uint32_t status;
-        uint32_t tx_cur_index = sc->re_desc.tx_cur_index;
-
-        txptr =&(sc->re_desc.tx_desc[tx_cur_index]);
-
-        status = RL_TDESC_CMD_OWN | opts1 | len;
-
-        if (fs_flag)
-                status |= RL_TDESC_CMD_SOF;
-        if (ls_flag)
-                status |= RL_TDESC_CMD_EOF;
-        if (tx_cur_index == (RE_TX_BUF_NUM - 1))
-                status |= RL_TDESC_CMD_EOR;
-
-        bus_dmamap_load(sc->re_desc.re_tx_mtag,
-                        sc->re_desc.re_tx_dmamap[tx_cur_index],
-                        addr,
-                        len,
-                        re_tx_dma_map_buf, txptr,
-                        0);
-        bus_dmamap_sync(sc->re_desc.re_tx_mtag,
-                        sc->re_desc.re_tx_dmamap[tx_cur_index],
-                        BUS_DMASYNC_PREWRITE);
-        txptr->ul[1] = htole32(opts2);
-        txptr->ul[0] = htole32(status);
-
-        bus_dmamap_sync(sc->re_desc.tx_desc_tag,
-                        sc->re_desc.tx_desc_dmamap,
-                        BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE);
-
-        if (ls_flag) {
-                if (sc->re_device_id==RT_DEVICEID_8125) {
-                        CSR_WRITE_2(sc, RE_TPPOLL_8125, RE_NPQ_8125);
-                        CSR_WRITE_2(sc, RE_TPPOLL_8125, RE_NPQ_8125);
-                } else {
-                        CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
-                        CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
-                }
-        }
-
-        sc->re_desc.tx_cur_index = (tx_cur_index+1)%RE_TX_BUF_NUM;
-}
-
-static int CountFreeTxDescNum(struct re_descriptor desc)
-{
-        int ret=desc.tx_last_index-desc.tx_cur_index;
-        if (ret<=0)
-                ret+=RE_TX_BUF_NUM;
-        ret--;
-        return ret;
-}
-
-static int CountMbufNum(struct mbuf *m_head)
-{
-        int ret=0;
-        struct mbuf *ptr = m_head;
-
-        while (ptr!=NULL) {
-                if (ptr->m_len >0)
-                        ret++;
-                ptr=ptr->m_next;
-        }
-
-        return ret;
-}
-
-#ifdef RE_FIXUP_RX
-static __inline void re_fixup_rx(struct mbuf *m)
-{
-        int                     i;
-        uint16_t                *src, *dst;
-
-        src = mtod(m, uint16_t *);
-        dst = src - (RE_ETHER_ALIGN - ETHER_ALIGN) / sizeof *src;
-
-        for (i = 0; i < (m->m_len / sizeof(uint16_t) + 1); i++)
-                *dst++ = *src++;
-
-        m->m_data -= RE_ETHER_ALIGN - ETHER_ALIGN;
-}
-#endif
-
-/*
- * A frame was downloaded to the chip. It's safe for us to clean up
- * the list buffers.
- */
-static void re_txeof(struct re_softc *sc)  	/* Transmit OK/ERR handler */
-{
-        union TxDesc *txptr;
-        struct ifnet		*ifp;
-        u_int32_t           txstat;
-
-        /*	printf("X");*/
-
-        ifp = RE_GET_IFNET(sc);
-
-#if OS_VER < VERSION(9,0)
-        /* Clear the timeout timer. */
-        ifp->if_timer = 0;
-#endif
-
-        bus_dmamap_sync(sc->re_desc.tx_desc_tag,
-                        sc->re_desc.tx_desc_dmamap,
-                        BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE);
-
-        while (sc->re_desc.tx_last_index!=sc->re_desc.tx_cur_index) {
-                txptr=&(sc->re_desc.tx_desc[sc->re_desc.tx_last_index]);
-                txstat = le32toh(txptr->ul[0]);
-                if (txstat & RL_TDESC_STAT_OWN)
-                        break;
-#ifdef _DEBUG_
-                printf("**** Tx OK  ****\n");
-#endif
-                bus_dmamap_sync(sc->re_desc.re_tx_mtag,
-                                sc->re_desc.re_tx_dmamap[sc->re_desc.tx_last_index],
-                                BUS_DMASYNC_POSTWRITE);
-                bus_dmamap_unload(sc->re_desc.re_tx_mtag,
-                                  sc->re_desc.re_tx_dmamap[sc->re_desc.tx_last_index]);
-
-                if (sc->re_desc.tx_buf[sc->re_desc.tx_last_index]!=NULL) {
-                        m_freem(sc->re_desc.tx_buf[sc->re_desc.tx_last_index]);	/* Free Current MBuf in a Mbuf list*/
-                        sc->re_desc.tx_buf[sc->re_desc.tx_last_index] = NULL;
-                }
-
-                sc->re_desc.tx_last_index = (sc->re_desc.tx_last_index+1)%RE_TX_BUF_NUM;
-#if OS_VER < VERSION(11,0)
-                if (txstat & (RL_TDESC_STAT_EXCESSCOL|
-                              RL_TDESC_STAT_COLCNT))
-                        ifp->if_collisions++;
-                if (txstat & RL_TDESC_STAT_TXERRSUM)
-                        ifp->if_oerrors++;
-                else
-                        ifp->if_opackets++;
-#else
-                if (txstat & (RL_TDESC_STAT_EXCESSCOL|
-                              RL_TDESC_STAT_COLCNT))
-                        if_inc_counter(ifp, IFCOUNTER_COLLISIONS, 1);
-                if (txstat & RL_TDESC_STAT_TXERRSUM)
-                        if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
-                else
-                        if_inc_counter(ifp, IFCOUNTER_OPACKETS, 1);
-#endif
-                ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
-        }
-
-        return;
-}
-
-/*
- * A frame has been uploaded: pass the resulting mbuf chain up to
- * the higher level protocols.
- *
- * You know there's something wrong with a PCI bus-master chip design
- * when you have to use m_devget().
- *
- * The receive operation is badly documented in the datasheet, so I'll
- * attempt to document it here. The driver provides a buffer area and
- * places its base address in the RX buffer start address register.
- * The chip then begins copying frames into the RX buffer. Each frame
- * is preceeded by a 32-bit RX status word which specifies the length
- * of the frame and certain other status bits. Each frame (starting with
- * the status word) is also 32-bit aligned. The frame length is in the
- * first 16 bits of the status word; the lower 15 bits correspond with
- * the 'rx status register' mentioned in the datasheet.
- *
- * Note: to make the Alpha happy, the frame payload needs to be aligned
- * on a 32-bit boundary. To achieve this, we cheat a bit by copying from
- * the ring buffer starting at an address two bytes before the actual
- * data location. We can then shave off the first two bytes using m_adj().
- * The reason we do this is because m_devget() doesn't let us specify an
- * offset into the mbuf storage space, so we have to artificially create
- * one. The ring is allocated in such a way that there are a few unused
- * bytes of space preceecing it so that it will be safe for us to do the
- * 2-byte backstep even if reading from the ring at offset 0.
- */
-static void re_rxeof(sc)	/* Receive Data OK/ERR handler */
-struct re_softc		*sc;
-{
-        struct ether_header	*eh;
-        struct mbuf		*m;
-        struct ifnet		*ifp;
-        union RxDesc *rxptr;
-        int bError;
-        struct mbuf *buf;
-        int size;
-        int maxpkt = RE_RX_BUF_NUM;
-        u_int32_t rx_cur_index;
-        u_int32_t opts2,opts1,status;
-
-        /*		RE_LOCK_ASSERT(sc);*/
-
-        ifp = RE_GET_IFNET(sc);
-
-        bus_dmamap_sync(sc->re_desc.rx_desc_tag,
-                        sc->re_desc.rx_desc_dmamap,
-                        BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE);
-
-        rx_cur_index = sc->re_desc.rx_cur_index;
-        rxptr=&(sc->re_desc.rx_desc[rx_cur_index]);
-        opts1 = le32toh(rxptr->ul[0]);
-        while ((opts1&RL_RDESC_STAT_OWN)==0) {	/* Receive OK */
-                bError = 0;
-
-                sc->re_desc.rx_cur_index = (rx_cur_index+1)%RE_RX_BUF_NUM;
-
-                /* Check if this packet is received correctly*/
-                if (opts1&0x200000) {	/*Check RES bit*/
-                        bError=1;
-#if OS_VER < VERSION(11,0)
-                        ifp->if_ierrors++;
-#else
-                        if_inc_counter(ifp, IFCOUNTER_IERRORS, 1);
-#endif
-                        goto update_desc;
-                }
-                opts2 = le32toh(rxptr->ul[1]);
-
-                //buf = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR); /* Alloc a new mbuf */
-
-                if (sc->re_rx_mbuf_sz <= MCLBYTES)
-                        size = MCLBYTES;
-                else if (sc->re_rx_mbuf_sz <= MJUMPAGESIZE)
-                        size = MJUMPAGESIZE;
-                else
-                        size = MJUM9BYTES;
-
-                buf = m_getjcl(M_DONTWAIT, MT_DATA, M_PKTHDR, size);
-                if (buf==NULL) {
-                        bError=1;
-#if OS_VER < VERSION(11,0)
-                        ifp->if_iqdrops++;
-#else
-                        if_inc_counter(ifp, IFCOUNTER_IQDROPS, 1);
-#endif
-                        goto update_desc;
-                }
-
-                buf->m_len = buf->m_pkthdr.len = size;
-#ifdef RE_FIXUP_RX
-                /*
-                 * This is part of an evil trick to deal with non-x86 platforms.
-                 * The RealTek chip requires RX buffers to be aligned on 64-bit
-                 * boundaries, but that will hose non-x86 machines. To get around
-                 * this, we leave some empty space at the start of each buffer
-                 * and for non-x86 hosts, we copy the buffer back six bytes
-                 * to achieve word alignment. This is slightly more efficient
-                 * than allocating a new buffer, copying the contents, and
-                 * discarding the old buffer.
-                 */
-                m_adj(buf, RE_ETHER_ALIGN);
-#endif
-
-                bus_dmamap_sync(sc->re_desc.re_rx_mtag,
-                                sc->re_desc.re_rx_dmamap[rx_cur_index],
-                                BUS_DMASYNC_POSTREAD);
-                bus_dmamap_unload(sc->re_desc.re_rx_mtag,
-                                  sc->re_desc.re_rx_dmamap[rx_cur_index]);
-
-                m = sc->re_desc.rx_buf[rx_cur_index];
-                sc->re_desc.rx_buf[rx_cur_index] = buf;
-                m->m_pkthdr.len = m->m_len = (opts1&RL_RDESC_STAT_GFRAGLEN)-ETHER_CRC_LEN;
-                m->m_pkthdr.rcvif = ifp;
-
-#ifdef RE_FIXUP_RX
-                re_fixup_rx(m);
-#endif
-
-                //vlan
-                if (opts2 & RL_RDESC_VLANCTL_TAG) {
-                        m->m_pkthdr.ether_vtag =
-                                bswap16((opts2 & RL_RDESC_VLANCTL_DATA));
-                        m->m_flags |= M_VLANTAG;
-                }
-                if (ifp->if_capenable & IFCAP_RXCSUM) {
-                        if (!(sc->re_if_flags & RL_FLAG_DESCV2)) {
-                                if (opts1 & RL_ProtoIP)
-                                        m->m_pkthdr.csum_flags |=  CSUM_IP_CHECKED;
-                                if (!(opts1 & RL_IPF))
-                                        m->m_pkthdr.csum_flags |= CSUM_IP_VALID;
-                                if ((((opts1 & RL_ProtoIP)==(1<<17)) && !(opts1 & RL_TCPF))   || (((opts1 & RL_ProtoIP)==(1<<18)) && !(opts1 & RL_UDPF))) {
-                                        m->m_pkthdr.csum_flags |= CSUM_DATA_VALID|CSUM_PSEUDO_HDR;
-                                        m->m_pkthdr.csum_data = 0xffff;
-                                }
-                        } else {
-                                if ((opts1 & RL_ProtoIP) && (opts2 & RL_V4F))
-                                        m->m_pkthdr.csum_flags |=  CSUM_IP_CHECKED;
-                                if (!(opts1 & RL_IPF) && (opts2 & RL_V4F))
-                                        m->m_pkthdr.csum_flags |= CSUM_IP_VALID;
-                                if (((opts1 & RL_TCPT) && !(opts2 & RL_TCPF)) || ((opts1 & RL_UDPT) && !(opts2 & RL_UDPF))) {
-                                        m->m_pkthdr.csum_flags |= CSUM_DATA_VALID|CSUM_PSEUDO_HDR;
-                                        m->m_pkthdr.csum_data = 0xffff;
-                                }
-                        }
-                }
-
-                eh = mtod(m, struct ether_header *);
-#if OS_VER < VERSION(11,0)
-                ifp->if_ipackets++;
-#else
-                if_inc_counter(ifp, IFCOUNTER_IPACKETS, 1);
-#endif
-#ifdef _DEBUG_
-                printf("Rcv Packet, Len=%d \n", m->m_len);
-#endif
-
-                RE_UNLOCK(sc);
-
-                /*#if OS_VER < VERSION(5, 1)*/
-#if OS_VER < VERSION(4,9)
-                /* Remove header from mbuf and pass it on. */
-                m_adj(m, sizeof(struct ether_header));
-                ether_input(ifp, eh, m);
-#else
-                (*ifp->if_input)(ifp, m);
-#endif
-                RE_LOCK(sc);
-
-update_desc:
-                //rxptr->ul[0]&=htole32(0x40000000);	/* keep EOR bit */
-                rxptr->ul[1]=0;
-
-                status = RL_RDESC_CMD_OWN | sc->re_rx_desc_buf_sz;
-                if (rx_cur_index == (RE_RX_BUF_NUM - 1))
-                        status |= RL_RDESC_CMD_EOR;
-                if (!bError) {
-                        bus_dmamap_load(sc->re_desc.re_rx_mtag,
-                                        sc->re_desc.re_rx_dmamap[rx_cur_index],
-                                        sc->re_desc.rx_buf[rx_cur_index]->m_data,
-                                        sc->re_rx_desc_buf_sz,
-                                        re_rx_dma_map_buf, rxptr,
-                                        0);
-                        bus_dmamap_sync(sc->re_desc.re_rx_mtag,
-                                        sc->re_desc.re_rx_dmamap[rx_cur_index],
-                                        BUS_DMASYNC_PREREAD);
-                }
-                rxptr->ul[0] = htole32(status);
-                rx_cur_index = sc->re_desc.rx_cur_index;
-                rxptr=&sc->re_desc.rx_desc[rx_cur_index];
-                opts1 = le32toh(rxptr->ul[0]);
-
-                maxpkt--;
-                if (maxpkt==0)
-                        break;
-        }
-
-        bus_dmamap_sync(sc->re_desc.rx_desc_tag,
-                        sc->re_desc.rx_desc_dmamap,
-                        BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE);
-
-        return;
-}
-
-#if OS_VER < VERSION(7,0)
-static void re_intr(void *arg)  	/* Interrupt Handler */
-#else
-static int re_intr(void *arg)  	/* Interrupt Handler */
-#endif //OS_VER < VERSION(7,0)
-{
-        struct re_softc		*sc;
-
-        sc = arg;
-
-        if ((sc->re_if_flags & (RL_FLAG_MSI | RL_FLAG_MSIX)) == 0) {
-                if ((CSR_READ_2(sc, RE_ISR) & RE_INTRS) == 0) {
-#if OS_VER < VERSION(7,0)
-                        return;
-#else
-                        return (FILTER_STRAY);
-#endif
-                }
-        }
-
-        /* Disable interrupts. */
-        CSR_WRITE_2(sc, RE_IMR, 0x0000);
-
-#if OS_VER < VERSION(7,0)
-        re_int_task(arg, 0);
-#else //OS_VER < VERSION(7,0)
-#if OS_VER < VERSION(11,0)
-        taskqueue_enqueue_fast(taskqueue_fast, &sc->re_inttask);
-#else ////OS_VER < VERSION(11,0)
-        taskqueue_enqueue(taskqueue_fast, &sc->re_inttask);
-#endif //OS_VER < VERSION(11,0)
-        return (FILTER_HANDLED);
-#endif //OS_VER < VERSION(7,0)
-}
-
-#if OS_VER < VERSION(7,0)
-static void re_intr_8125(void *arg)  	/* Interrupt Handler */
-#else
-static int re_intr_8125(void *arg)  	/* Interrupt Handler */
-#endif //OS_VER < VERSION(7,0)
-{
-        struct re_softc		*sc;
-
-        sc = arg;
-
-        if ((sc->re_if_flags & (RL_FLAG_MSI | RL_FLAG_MSIX)) == 0) {
-                if ((CSR_READ_4(sc, RE_ISR0_8125) & RE_INTRS) == 0) {
-#if OS_VER < VERSION(7,0)
-                        return;
-#else
-                        return (FILTER_STRAY);
-#endif
-                }
-        }
-
-        /* Disable interrupts. */
-        CSR_WRITE_4(sc, RE_IMR0_8125, 0x00000000);
-
-#if OS_VER < VERSION(7,0)
-        re_int_task_8125(arg, 0);
-#else //OS_VER < VERSION(7,0)
-#if OS_VER < VERSION(11,0)
-        taskqueue_enqueue_fast(taskqueue_fast, &sc->re_inttask);
-#else ////OS_VER < VERSION(11,0)
-        taskqueue_enqueue(taskqueue_fast, &sc->re_inttask);
-#endif //OS_VER < VERSION(11,0)
-        return (FILTER_HANDLED);
-#endif //OS_VER < VERSION(7,0)
-}
-
-static void re_int_task(void *arg, int npending)
-{
-        struct re_softc		*sc;
-        struct ifnet		*ifp;
-        u_int32_t		status;
-
-        sc = arg;
-
-        RE_LOCK(sc);
-
-        ifp = RE_GET_IFNET(sc);
-
-        status = CSR_READ_2(sc, RE_ISR);
-
-        if (status) {
-                CSR_WRITE_2(sc, RE_ISR, status & ~RE_ISR_FIFO_OFLOW);
-        }
-
-        if (sc->suspended ||
-            (ifp->if_drv_flags & IFF_DRV_RUNNING) == 0) {
-                RE_UNLOCK(sc);
-                return;
-        }
-
-        re_rxeof(sc);
-
-        if (sc->re_type == MACFG_21) {
-                if (status & RE_ISR_FIFO_OFLOW) {
-                        sc->rx_fifo_overflow = 1;
-                        CSR_WRITE_2(sc, RE_IntrMitigate, 0x0000);
-                        CSR_WRITE_4(sc, RE_TIMERCNT, 0x4000);
-                        CSR_WRITE_4(sc, RE_TIMERINT, 0x4000);
-                } else {
-                        sc->rx_fifo_overflow = 0;
-                        CSR_WRITE_4(sc,RE_CPlusCmd, 0x51512082);
-                }
-
-                if (status & RE_ISR_PCS_TIMEOUT) {
-                        if ((status & RE_ISR_FIFO_OFLOW) &&
-                            (!(status & (RE_ISR_RX_OK | RE_ISR_TX_OK | RE_ISR_RX_OVERRUN)))) {
-                                re_reset(sc);
-                                re_init(sc);
-                                sc->rx_fifo_overflow = 0;
-                                CSR_WRITE_2(sc, RE_ISR, RE_ISR_FIFO_OFLOW);
-                        }
-                }
-        }
-
-        re_txeof(sc);
-
-        if (status & RE_ISR_SYSTEM_ERR) {
-                re_reset(sc);
-                re_init(sc);
-        }
-
-        switch(sc->re_type) {
-        case MACFG_21:
-        case MACFG_22:
-        case MACFG_23:
-        case MACFG_24:
-                CSR_WRITE_1(sc, RE_TPPOLL, RE_NPQ);
-                break;
-
-        default:
-                break;
-        }
-
-        RE_UNLOCK(sc);
-
-        if (!IFQ_DRV_IS_EMPTY(&ifp->if_snd))
-                re_start(ifp);
-
-#if OS_VER>=VERSION(7,0)
-        if (CSR_READ_2(sc, RE_ISR) & RE_INTRS) {
-#if OS_VER < VERSION(11,0)
-                taskqueue_enqueue_fast(taskqueue_fast, &sc->re_inttask);
-#else ////OS_VER < VERSION(11,0)
-                taskqueue_enqueue(taskqueue_fast, &sc->re_inttask);
-#endif //OS_VER < VERSION(11,0)
-                return;
-        }
-#endif //OS_VER>=VERSION(7,0)
-
-        /* Re-enable interrupts. */
-        CSR_WRITE_2(sc, RE_IMR, RE_INTRS);
-}
-
-static void re_int_task_8125(void *arg, int npending)
-{
-        struct re_softc		*sc;
-        struct ifnet		*ifp;
-        u_int32_t		status;
-
-        sc = arg;
-
-        RE_LOCK(sc);
-
-        ifp = RE_GET_IFNET(sc);
-
-        status = CSR_READ_4(sc, RE_ISR0_8125);
-
-        if (status) {
-                CSR_WRITE_4(sc, RE_ISR0_8125, status & ~RE_ISR_FIFO_OFLOW);
-        }
-
-        if (sc->suspended ||
-            (ifp->if_drv_flags & IFF_DRV_RUNNING) == 0) {
-                RE_UNLOCK(sc);
-                return;
-        }
-
-        re_rxeof(sc);
-
-        re_txeof(sc);
-
-        if (status & RE_ISR_SYSTEM_ERR) {
-                re_reset(sc);
-                re_init(sc);
-        }
-
-        RE_UNLOCK(sc);
-
-        if (!IFQ_DRV_IS_EMPTY(&ifp->if_snd))
-                re_start(ifp);
-
-#if OS_VER>=VERSION(7,0)
-        if (CSR_READ_4(sc, RE_ISR0_8125) & RE_INTRS) {
-#if OS_VER < VERSION(11,0)
-                taskqueue_enqueue_fast(taskqueue_fast, &sc->re_inttask);
-#else ////OS_VER < VERSION(11,0)
-                taskqueue_enqueue(taskqueue_fast, &sc->re_inttask);
-#endif //OS_VER < VERSION(11,0)
-                return;
-        }
-#endif //OS_VER>=VERSION(7,0)
-
-        /* Re-enable interrupts. */
-        CSR_WRITE_4(sc, RE_IMR0_8125, RE_INTRS);
-}
-
-#endif	/* !__DragonFly__ */
 
 static void re_set_multicast_reg(struct re_softc *sc, u_int32_t mask0, u_int32_t mask4)
 {
@@ -8716,27 +6555,6 @@ static void re_set_multicast_reg(struct re_softc *sc, u_int32_t mask0, u_int32_t
         return;
 }
 
-#ifndef __DragonFly__
-static void re_set_rx_packet_filter_in_sleep_state(sc)
-struct re_softc		*sc;
-{
-        struct ifnet		*ifp;
-        u_int32_t		rxfilt;
-
-        ifp = RE_GET_IFNET(sc);
-
-        rxfilt = CSR_READ_4(sc, RE_RXCFG);
-
-        rxfilt &= ~(RE_RXCFG_RX_ALLPHYS | RE_RXCFG_RX_INDIV | RE_RXCFG_RX_MULTI | RE_RXCFG_RX_BROAD | RE_RXCFG_RX_RUNT | RE_RXCFG_RX_ERRPKT);
-        rxfilt |= (RE_RXCFG_RX_INDIV | RE_RXCFG_RX_MULTI | RE_RXCFG_RX_BROAD);
-
-        CSR_WRITE_4(sc, RE_RXCFG, rxfilt);
-
-        re_set_multicast_reg(sc, 0xFFFFFFFF, 0xFFFFFFFF);
-
-        return;
-}
-#endif	/* !__DragonFly__ */
 
 static void re_set_rx_packet_filter(struct re_softc *sc)
 {
@@ -8798,22 +6616,7 @@ static void re_setmulti(struct re_softc *sc)
                 return;
         }
 
-#ifndef __DragonFly__
-        /* now program new ones */
-#if OS_VER > VERSION(6,0)
-        IF_ADDR_LOCK(ifp);
-#endif
-#if OS_VER < VERSION(4,9)
-        for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-             ifma = ifma->ifma_link.le_next)
-#elif OS_VER < VERSION(12,0)
-        TAILQ_FOREACH(ifma,&ifp->if_multiaddrs,ifma_link)
-#else
-        CK_STAILQ_FOREACH(ifma,&ifp->if_multiaddrs,ifma_link)
-#endif
-#else	/* __DragonFly__ */
 	TAILQ_FOREACH(ifma,&ifp->if_multiaddrs,ifma_link)
-#endif	/* !__DragonFly__ */
         {
                 if (ifma->ifma_addr->sa_family != AF_LINK)
                         continue;
@@ -8825,11 +6628,6 @@ static void re_setmulti(struct re_softc *sc)
                         hashes[1] |= (1 << (h - 32));
                 mcnt++;
         }
-#ifndef __DragonFly__
-#if OS_VER > VERSION(6,0)
-        IF_ADDR_UNLOCK(ifp);
-#endif
-#endif	/* !__DragonFly__ */
 
         if (mcnt) {
                 if ((sc->re_if_flags & RL_FLAG_PCIE) != 0) {
@@ -8847,155 +6645,6 @@ static void re_setmulti(struct re_softc *sc)
         return;
 }
 
-#ifndef __DragonFly__
-static int re_ioctl(ifp, command, data)
-struct ifnet		*ifp;
-u_long			command;
-caddr_t			data;
-{
-        struct re_softc		*sc = ifp->if_softc;
-        struct ifreq		*ifr = (struct ifreq *) data;
-        /*int			s;*/
-        int			error = 0;
-        int mask, reinit;
-        /*s = splimp();*/
-
-        switch(command) {
-        case SIOCSIFADDR:
-        case SIOCGIFADDR:
-                error = ether_ioctl(ifp, command, data);
-
-                break;
-        case SIOCSIFMTU:
-
-                //printf("before mtu =%d\n",(int)ifp->if_mtu);
-                if (ifr->ifr_mtu > sc->max_jumbo_frame_size)
-                        error = EINVAL;
-                else {
-                        ifp->if_mtu = ifr->ifr_mtu;
-
-                        //if running
-                        if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
-                                //printf("set mtu when running\n");
-
-                                RE_LOCK(sc);
-                                re_stop(sc);
-
-                                re_release_buf(sc);
-                                set_rxbufsize(sc);
-                                error =re_alloc_buf(sc);
-
-                                if (error == 0) {
-                                        re_init(sc);
-                                }
-                                RE_UNLOCK(sc);
-
-                        } else {
-                                //if not running
-                                RE_LOCK(sc);
-                                re_release_buf(sc);
-                                set_rxbufsize(sc);
-                                error =re_alloc_buf(sc);
-                                if (error == 0) {
-                                        /* Init descriptors. */
-                                        re_var_init(sc);
-                                }
-                                RE_UNLOCK(sc);
-                        }
-
-                }
-                //	printf("after mtu =%d\n",(int)ifp->if_mtu);
-                break;
-        case SIOCSIFFLAGS:
-                RE_LOCK(sc);
-                if (ifp->if_flags & IFF_UP) {
-                        re_init(sc);
-                } else if (ifp->if_drv_flags & IFF_DRV_RUNNING) {
-                        re_stop(sc);
-                }
-                error = 0;
-                RE_UNLOCK(sc);
-                break;
-        case SIOCADDMULTI:
-        case SIOCDELMULTI:
-                RE_LOCK(sc);
-                re_set_rx_packet_filter(sc);
-                RE_UNLOCK(sc);
-                error = 0;
-                break;
-        case SIOCGIFMEDIA:
-        case SIOCSIFMEDIA:
-                error = ifmedia_ioctl(ifp, ifr, &sc->media, command);
-                break;
-        case SIOCSIFCAP:
-
-
-                mask = ifr->ifr_reqcap ^ ifp->if_capenable;
-                reinit = 0;
-
-                if ((mask & IFCAP_TXCSUM) != 0 && (ifp->if_capabilities & IFCAP_TXCSUM) != 0) {
-                        ifp->if_capenable ^= IFCAP_TXCSUM;
-                        if ((ifp->if_capenable & IFCAP_TXCSUM) != 0)  {
-                                if ((sc->re_type == MACFG_24) || (sc->re_type == MACFG_25) || (sc->re_type == MACFG_26))
-                                        ifp->if_hwassist |= CSUM_TCP | CSUM_UDP;
-                                else
-                                        ifp->if_hwassist |= RE_CSUM_FEATURES;
-                        } else
-                                ifp->if_hwassist &= ~RE_CSUM_FEATURES;
-                        reinit = 1;
-                }
-
-                if ((mask & IFCAP_RXCSUM) != 0 &&
-                    (ifp->if_capabilities & IFCAP_RXCSUM) != 0) {
-                        ifp->if_capenable ^= IFCAP_RXCSUM;
-                        reinit = 1;
-                }
-
-                if ((ifp->if_mtu <= ETHERMTU) || ((sc->re_type>= MACFG_3) &&(sc->re_type <=MACFG_6)) || ((sc->re_type>= MACFG_21) && (sc->re_type <=MACFG_23))) {
-                        if (ifp->if_capenable & IFCAP_TXCSUM)
-                                sc->re_tx_cstag = 1;
-                        else
-                                sc->re_tx_cstag = 0;
-
-                        if (ifp->if_capenable & IFCAP_RXCSUM)
-                                sc->re_rx_cstag = 1;
-                        else
-                                sc->re_rx_cstag = 0;
-                }
-                if ((mask & IFCAP_VLAN_HWTAGGING) != 0 &&
-                    (ifp->if_capabilities & IFCAP_VLAN_HWTAGGING) != 0) {
-                        ifp->if_capenable ^= IFCAP_VLAN_HWTAGGING;
-                        /* TSO over VLAN requires VLAN hardware tagging. */
-                        //if ((ifp->if_capenable & IFCAP_VLAN_HWTAGGING) == 0)
-                        //	ifp->if_capenable &= ~IFCAP_VLAN_HWTSO;
-                        reinit = 1;
-                }
-
-                if ((mask & IFCAP_WOL) != 0 &&
-                    (ifp->if_capabilities & IFCAP_WOL) != 0) {
-                        if ((mask & IFCAP_WOL_UCAST) != 0)
-                                ifp->if_capenable ^= IFCAP_WOL_UCAST;
-                        if ((mask & IFCAP_WOL_MCAST) != 0)
-                                ifp->if_capenable ^= IFCAP_WOL_MCAST;
-                        if ((mask & IFCAP_WOL_MAGIC) != 0)
-                                ifp->if_capenable ^= IFCAP_WOL_MAGIC;
-                }
-                if (reinit && ifp->if_drv_flags & IFF_DRV_RUNNING) {
-                        ifp->if_drv_flags &= ~IFF_DRV_RUNNING;
-                        re_init(sc);
-                }
-                VLAN_CAPABILITIES(ifp);
-                break;
-        default:
-                error = EINVAL;
-                break;
-        }
-
-        /*(void)splx(s);*/
-
-        return(error);
-}
-#endif	/* !__DragonFly__ */
 
 static void re_link_on_patch(struct re_softc *sc)
 {
@@ -9084,132 +6733,8 @@ static void re_link_on_patch(struct re_softc *sc)
                 }
         }
 
-#ifndef __DragonFly__
-        re_init_unlock(sc);
-#endif
 }
 
-#ifndef __DragonFly__
-static void re_link_down_patch(struct re_softc *sc)
-{
-        struct ifnet		*ifp;
-
-        ifp = RE_GET_IFNET(sc);
-
-        re_txeof(sc);
-        re_rxeof(sc);
-        re_stop(sc);
-
-        sc->ifmedia_upd(ifp);
-}
-
-/*
- * Check Link Status.
- */
-static void re_check_link_status(struct re_softc *sc)
-{
-        u_int8_t	link_state;
-        struct ifnet		*ifp;
-
-        ifp = RE_GET_IFNET(sc);
-
-        if (re_link_ok(sc)) {
-                link_state = LINK_STATE_UP;
-        } else {
-                link_state = LINK_STATE_DOWN;
-        }
-
-        if (link_state != sc->link_state) {
-                sc->link_state = link_state;
-                if (link_state == LINK_STATE_UP) {
-                        re_link_on_patch(sc);
-                        re_link_state_change(ifp, LINK_STATE_UP);
-                } else {
-                        re_link_state_change(ifp, LINK_STATE_DOWN);
-                        re_link_down_patch(sc);
-                }
-        }
-}
-
-static void re_init_timer(struct re_softc *sc)
-{
-#ifdef RE_USE_NEW_CALLOUT_FUN
-        callout_init(&sc->re_stat_ch, CALLOUT_MPSAFE);
-#else
-        callout_handle_init(&sc->re_stat_ch);
-#endif
-}
-
-static void re_stop_timer(struct re_softc *sc)
-{
-#ifdef RE_USE_NEW_CALLOUT_FUN
-        callout_stop(&sc->re_stat_ch);
-#else
-        untimeout(re_tick, sc, sc->re_stat_ch);
-#endif
-}
-
-static void re_start_timer(struct re_softc *sc)
-{
-#ifdef RE_USE_NEW_CALLOUT_FUN
-        callout_reset(&sc->re_stat_ch, hz, re_tick, sc);
-#else
-        re_stop_timer(sc);
-        sc->re_stat_ch = timeout(re_tick, sc, hz);
-#endif
-}
-
-static void re_tick(xsc)
-void			*xsc;
-{
-        /*called per second*/
-        struct re_softc		*sc;
-        int			s;
-
-        s = splimp();
-
-        sc = xsc;
-        /*mii = device_get_softc(sc->re_miibus);
-
-        mii_tick(mii);*/
-
-        splx(s);
-
-        RE_LOCK(sc);
-
-        if (sc->re_link_chg_det == 1) {
-                re_check_link_status(sc);
-                re_start_timer(sc);
-        }
-
-        RE_UNLOCK(sc);
-
-        return;
-}
-
-#if OS_VER < VERSION(7,0)
-static void re_watchdog(ifp)
-struct ifnet		*ifp;
-{
-        struct re_softc		*sc;
-
-        sc = ifp->if_softc;
-
-        printf("re%d: watchdog timeout\n", sc->re_unit);
-#if OS_VER < VERSION(11,0)
-        ifp->if_oerrors++;
-#else
-        if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
-#endif
-
-        re_txeof(sc);
-        re_rxeof(sc);
-        re_init(sc);
-
-        return;
-}
-#endif
-#endif	/* !__DragonFly__ */
 
 /*
  * Set media options.
@@ -9248,15 +6773,7 @@ static int re_ifmedia_upd(struct ifnet *ifp)
                        GTCR_ADV_1000THDX;
                 break;
         case IFM_1000_SX:
-#ifndef __DragonFly__
-#if OS_VER < 500000
-        case IFM_1000_TX:
-#else
-        case IFM_1000_T:
-#endif
-#else	/* __DragonFly__ */
 	case IFM_1000_T:
-#endif	/* !__DragonFly__ */
                 anar = ANAR_TX_FD |
                        ANAR_TX |
                        ANAR_10_FD |
@@ -9294,13 +6811,8 @@ static int re_ifmedia_upd(struct ifnet *ifp)
 
                 break;
         default:
-#ifndef __DragonFly__
-                printf("re%d: Unsupported media type\n", sc->re_unit);
-                return(0);
-#else
 		if_printf(ifp, "Unsupported media type\n");
 		return (EOPNOTSUPP);
-#endif
         }
 
         MP_WritePhyUshort(sc, 0x1F, 0x0000);
@@ -9349,9 +6861,6 @@ static int re_ifmedia_upd_8125(struct ifnet *ifp)
                        GTCR_ADV_1000THDX;
                 break;
         case IFM_2500_SX:
-#ifndef __DragonFly__
-        case IFM_2500_X:
-#endif
 #ifdef IFM_2500_T
         case IFM_2500_T:
 #endif
@@ -9364,15 +6873,7 @@ static int re_ifmedia_upd_8125(struct ifnet *ifp)
                        GTCR_ADV_1000THDX;
                 break;
         case IFM_1000_SX:
-#ifndef __DragonFly__
-#if OS_VER < 500000
-        case IFM_1000_TX:
-#else
-        case IFM_1000_T:
-#endif
-#else	/* __DragonFly__ */
 	case IFM_1000_T:
-#endif	/* !__DragonFly__ */
                 anar = ANAR_TX_FD |
                        ANAR_TX |
                        ANAR_10_FD |
@@ -9410,13 +6911,8 @@ static int re_ifmedia_upd_8125(struct ifnet *ifp)
 
                 break;
         default:
-#ifndef __DragonFly__
-                printf("re%d: Unsupported media type\n", sc->re_unit);
-                return(0);
-#else
 		if_printf(ifp, "Unsupported media type\n");
 		return (EOPNOTSUPP);
-#endif
         }
 
         MP_WritePhyUshort(sc, 0x1F, 0x0000);
@@ -9459,13 +6955,11 @@ static void re_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
                         ifmr->ifm_active |= IFM_100_TX;
                 else if (msr & RL_PHY_STATUS_1000MF)
                         ifmr->ifm_active |= IFM_1000_T;
-#ifdef __DragonFly__
         } else {
 		if (IFM_SUBTYPE(sc->media.ifm_media) == IFM_AUTO)
 			ifmr->ifm_active |= IFM_NONE;
 		else
 			ifmr->ifm_active |= sc->media.ifm_media;
-#endif
         }
 
         RE_UNLOCK(sc);
@@ -9512,13 +7006,11 @@ static void re_ifmedia_sts_8125(struct ifnet *ifp, struct ifmediareq *ifmr)
 #else
                         ifmr->ifm_active |= IFM_2500_SX;
 #endif
-#ifdef __DragonFly__
         } else {
 		if (IFM_SUBTYPE(sc->media.ifm_media) == IFM_AUTO)
 			ifmr->ifm_active |= IFM_NONE;
 		else
 			ifmr->ifm_active |= sc->media.ifm_media;
-#endif
         }
 
         RE_UNLOCK(sc);
@@ -31922,7 +29414,6 @@ static void re_read_eeprom(struct re_softc *sc, caddr_t dest, int off, int cnt, 
         return;
 }
 
-#ifdef __DragonFly__
 
 int
 rtl_check_mac_version(struct re_softc *sc)
@@ -32080,4 +29571,3 @@ rtl_cmac_unmap(struct re_softc *sc)
 	}
 }
 
-#endif	/* __DragonFly__ */

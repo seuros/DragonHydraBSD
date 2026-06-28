@@ -188,9 +188,7 @@
 #include "if_iwm_led.h"
 #include "if_iwm_fw.h"
 
-#if defined(__DragonFly__)
 #define mtodo(m, off)	mtodoff((m), void *, (off))
-#endif
 
 const uint8_t iwm_nvm_channels[] = {
 	/* 2.4 GHz */
@@ -416,11 +414,9 @@ static void	iwm_scan_curchan(struct ieee80211_scan_state *, unsigned long);
 static void	iwm_scan_mindwell(struct ieee80211_scan_state *);
 static int	iwm_detach(device_t);
 
-#if defined(__DragonFly__)
 static int     iwm_msi_enable = 1;
 
 TUNABLE_INT("hw.iwm.msi.enable", &iwm_msi_enable);
-#endif
 
 static int	iwm_lar_disable = 0;
 TUNABLE_INT("hw.iwm.lar.disable", &iwm_lar_disable);
@@ -995,18 +991,12 @@ iwm_alloc_rx_ring(struct iwm_softc *sc, struct iwm_rx_ring *ring)
 	}
 
         /* Create RX buffer DMA tag. */
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(sc->sc_dmat, PAGE_SIZE,
 				   0,
 				   BUS_SPACE_MAXADDR_32BIT,
 				   BUS_SPACE_MAXADDR,
 				   IWM_RBUF_SIZE, 1, IWM_RBUF_SIZE,
 				   BUS_DMA_NOWAIT, &ring->data_dmat);
-#else
-        error = bus_dma_tag_create(sc->sc_dmat, 1, 0,
-            BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL,
-            IWM_RBUF_SIZE, 1, IWM_RBUF_SIZE, 0, NULL, NULL, &ring->data_dmat);
-#endif
         if (error != 0) {
                 device_printf(sc->sc_dev,
                     "%s: could not create RX buf DMA tag, error %d\n",
@@ -1146,18 +1136,12 @@ iwm_alloc_tx_ring(struct iwm_softc *sc, struct iwm_tx_ring *ring, int qid)
 		nsegments = IWM_MAX_SCATTER - 2;
 	}
 
-#if defined(__DragonFly__)
 	error = bus_dma_tag_create(sc->sc_dmat, PAGE_SIZE,
 				   0,
 				   BUS_SPACE_MAXADDR_32BIT,
 				   BUS_SPACE_MAXADDR,
 				   maxsize, nsegments, maxsize,
 				   BUS_DMA_NOWAIT, &ring->data_dmat);
-#else
-	error = bus_dma_tag_create(sc->sc_dmat, 1, 0,
-	    BUS_SPACE_MAXADDR_32BIT, BUS_SPACE_MAXADDR, NULL, NULL, maxsize,
-            nsegments, maxsize, 0, NULL, NULL, &ring->data_dmat);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not create TX buf DMA tag\n");
 		goto fail;
@@ -1528,10 +1512,8 @@ iwm_nic_rx_legacy_init(struct iwm_softc *sc)
 	IWM_WRITE(sc,
 	    IWM_FH_RSCSR_CHNL0_STTS_WPTR_REG, sc->rxq.stat_dma.paddr >> 4);
 
-#if defined(__DragonFly__)
 	/* Force serialization (probably not needed but don't trust the HW) */
 	IWM_READ(sc, IWM_FH_RSCSR_CHNL0_STTS_WPTR_REG);
-#endif
 
 
 	/* Enable Rx DMA
@@ -3055,13 +3037,8 @@ iwm_rx_addbuf(struct iwm_softc *sc, int size, int idx)
 		return ENOBUFS;
 
 	m->m_len = m->m_pkthdr.len = m->m_ext.ext_size;
-#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(ring->data_dmat, ring->spare_map,
 	    m, &seg, 1, &nsegs, BUS_DMA_NOWAIT);
-#else
-	error = bus_dmamap_load_mbuf_sg(ring->data_dmat, ring->spare_map, m,
-	    &seg, &nsegs, BUS_DMA_NOWAIT);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: can't map mbuf, error %d\n", __func__, error);
@@ -3436,11 +3413,7 @@ iwm_rx_mpdu(struct iwm_softc *sc, struct mbuf *m, uint32_t offset,
 	    iwm_rx_mpdu_mq(sc, m, offset, stolen) :
 	    iwm_rx_rx_mpdu(sc, m, offset, stolen);
 	if (!ret) {
-#if !defined(__DragonFly__)
-		counter_u64_add(ic->ic_ierrors, 1);
-#else
 		++sc->sc_ic.ic_ierrors;
-#endif
 		return (ret);
 	}
 
@@ -3450,19 +3423,11 @@ iwm_rx_mpdu(struct iwm_softc *sc, struct mbuf *m, uint32_t offset,
 	IWM_UNLOCK(sc);
 	if (ni != NULL) {
 		IWM_DPRINTF(sc, IWM_DEBUG_RECV, "input m %p\n", m);
-#if !defined(__DragonFly__)
-		ieee80211_input_mimo(ni, m);
-#else
 		ieee80211_input_mimo(ni, m, NULL);
-#endif
 		ieee80211_free_node(ni);
 	} else {
 		IWM_DPRINTF(sc, IWM_DEBUG_RECV, "inputall m %p\n", m);
-#if !defined(__DragonFly__)
-		ieee80211_input_mimo_all(ic, m);
-#else
 		ieee80211_input_mimo_all(ic, m, NULL);
-#endif
 	}
 	IWM_LOCK(sc);
 
@@ -3474,9 +3439,6 @@ iwm_rx_tx_cmd_single(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
 	struct iwm_node *in)
 {
 	struct iwm_tx_resp *tx_resp = (void *)pkt->data;
-#if !defined(__DragonFly__)
-	struct ieee80211_ratectl_tx_status *txs = &sc->sc_txs;
-#endif
 	struct ieee80211_node *ni = &in->in_ni;
 	struct ieee80211vap *vap = ni->ni_vap;
 	int status = le16toh(tx_resp->status.status) & IWM_TX_STATUS_MSK;
@@ -3509,45 +3471,6 @@ iwm_rx_tx_cmd_single(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
 		    "ni_txrate=%d)\n", tx_resp_rate, cur_rate);
 	}
 
-#if !defined(__DragonFly__)
-	txs->flags = IEEE80211_RATECTL_STATUS_SHORT_RETRY |
-		     IEEE80211_RATECTL_STATUS_LONG_RETRY;
-	txs->short_retries = tx_resp->failure_rts;
-	txs->long_retries = tx_resp->failure_frame;
-	if (status != IWM_TX_STATUS_SUCCESS &&
-	    status != IWM_TX_STATUS_DIRECT_DONE) {
-		switch (status) {
-		case IWM_TX_STATUS_FAIL_SHORT_LIMIT:
-			txs->status = IEEE80211_RATECTL_TX_FAIL_SHORT;
-			break;
-		case IWM_TX_STATUS_FAIL_LONG_LIMIT:
-			txs->status = IEEE80211_RATECTL_TX_FAIL_LONG;
-			break;
-		case IWM_TX_STATUS_FAIL_LIFE_EXPIRE:
-			txs->status = IEEE80211_RATECTL_TX_FAIL_EXPIRED;
-			break;
-		default:
-			txs->status = IEEE80211_RATECTL_TX_FAIL_UNSPECIFIED;
-			break;
-		}
-	} else {
-		txs->status = IEEE80211_RATECTL_TX_SUCCESS;
-	}
-
-	if (rate_matched) {
-		ieee80211_ratectl_tx_complete(ni, txs);
-
-		int rix = ieee80211_ratectl_rate(vap->iv_bss, NULL, 0);
-		new_rate = vap->iv_bss->ni_txrate;
-		if (new_rate != 0 && new_rate != cur_rate) {
-			struct iwm_node *in = IWM_NODE(vap->iv_bss);
-			iwm_setrates(sc, in, rix);
-			iwm_send_lq_cmd(sc, &in->in_lq, FALSE);
-		}
-	}
-
-	return (txs->status != IEEE80211_RATECTL_TX_SUCCESS);
-#else
 	/*
 	 * XXX try to use old ieee80211 ABI, the new one isn't incorporated
 	 * into our ieee80211 yet.
@@ -3581,7 +3504,6 @@ iwm_rx_tx_cmd_single(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
 
 	return ret;
 
-#endif
 }
 
 static void
@@ -3923,14 +3845,9 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 
 	/* Trim 802.11 header. */
 	m_adj(m, hdrlen);
-#if !defined(__DragonFly__)
-	error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map, m,
-	    segs, &nsegs, BUS_DMA_NOWAIT);
-#else
 	error = bus_dmamap_load_mbuf_defrag(ring->data_dmat, data->map, &m,
 	    segs, IWM_MAX_SCATTER - 2,
 	    &nsegs, BUS_DMA_NOWAIT);
-#endif
 	if (error != 0) {
 		if (error != EFBIG) {
 			device_printf(sc->sc_dev, "can't map mbuf (error %d)\n",
@@ -3939,11 +3856,7 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 			return error;
 		}
 		/* Too many DMA segments, linearize mbuf. */
-#if !defined(__DragonFly__)
-		m1 = m_collapse(m, M_WAITOK, IWM_MAX_SCATTER - 2);
-#else
 		m1 = m_defrag(m, M_NOWAIT);
-#endif
 		if (m1 == NULL) {
 			device_printf(sc->sc_dev,
 			    "%s: could not defrag mbuf\n", __func__);
@@ -3952,13 +3865,8 @@ iwm_tx(struct iwm_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 		}
 		m = m1;
 
-#if !defined(__DragonFly__)
-		error = bus_dmamap_load_mbuf_sg(ring->data_dmat, data->map, m,
-		    segs, &nsegs, BUS_DMA_NOWAIT);
-#else
 		error = bus_dmamap_load_mbuf_defrag(ring->data_dmat, data->map,
 		    &m, segs, IWM_MAX_SCATTER - 2, &nsegs, BUS_DMA_NOWAIT);
-#endif
 		if (error != 0) {
 			device_printf(sc->sc_dev, "can't map mbuf (error %d)\n",
 			    error);
@@ -5051,11 +4959,7 @@ iwm_watchdog(void *arg)
 			iwm_nic_error(sc);
 #endif
 			ieee80211_restart_all(ic);
-#if defined(__DragonFly__)
 			++sc->sc_ic.ic_oerrors;
-#else
-			counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 			return;
 		}
 		callout_reset(&sc->sc_watchdog_to, hz, iwm_watchdog, sc);
@@ -5744,12 +5648,10 @@ iwm_intr(void *arg)
 	int r1, r2;
 	int isperiodic = 0;
 
-#if defined(__DragonFly__)
 	if (sc->sc_mem == NULL) {
 		kprintf("iwm_intr: detached\n");
 		return;
 	}
-#endif
 
 	IWM_LOCK(sc);
 	IWM_WRITE(sc, IWM_CSR_INT_MASK, 0);
@@ -5979,9 +5881,7 @@ iwm_pci_attach(device_t dev)
 	struct iwm_softc *sc;
 	int count, error, rid;
 	uint16_t reg;
-#if defined(__DragonFly__)
         int irq_flags;
-#endif
 
 	sc = device_get_softc(dev);
 
@@ -6011,32 +5911,18 @@ iwm_pci_attach(device_t dev)
 	/* Install interrupt handler. */
 	count = 1;
 	rid = 0;
-#if defined(__DragonFly__)
 	pci_alloc_1intr(dev, iwm_msi_enable, &rid, &irq_flags);
 	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, irq_flags);
-#else
-	if (pci_alloc_msi(dev, &count) == 0)
-		rid = 1;
-	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE |
-	    (rid != 0 ? 0 : RF_SHAREABLE));
-#endif
 	if (sc->sc_irq == NULL) {
 		device_printf(dev, "can't map interrupt\n");
 			return (ENXIO);
 	}
-#if defined(__DragonFly__)
 	error = bus_setup_intr(dev, sc->sc_irq, INTR_MPSAFE,
 			       iwm_intr, sc, &sc->sc_ih,
 			       &wlan_global_serializer);
-#else
-	error = bus_setup_intr(dev, sc->sc_irq, INTR_TYPE_NET | INTR_MPSAFE,
-	    NULL, iwm_intr, sc, &sc->sc_ih);
-#endif
 	if (error != 0) {
 		device_printf(dev, "can't establish interrupt");
-#if defined(__DragonFly__)
 		pci_release_msi(dev);
-#endif
 		return (error);
 	}
 	sc->sc_dmat = bus_get_dma_tag(sc->sc_dev);
@@ -6054,16 +5940,12 @@ iwm_pci_detach(device_t dev)
 		bus_release_resource(dev, SYS_RES_IRQ,
 		    rman_get_rid(sc->sc_irq), sc->sc_irq);
 		pci_release_msi(dev);
-#if defined(__DragonFly__)
 		sc->sc_irq = NULL;
-#endif
         }
 	if (sc->sc_mem != NULL) {
 		bus_release_resource(dev, SYS_RES_MEMORY,
 		    rman_get_rid(sc->sc_mem), sc->sc_mem);
-#if defined(__DragonFly__)
 		sc->sc_mem = NULL;
-#endif
 	}
 }
 
@@ -6308,9 +6190,6 @@ iwm_wme_update(struct ieee80211com *ic)
 {
 #define IWM_EXP2(x)	((1 << (x)) - 1)	/* CWmin = 2^ECWmin - 1 */
 	struct iwm_softc *sc = ic->ic_softc;
-#if !defined(__DragonFly__)
-	struct chanAccParams chp;
-#endif
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 	struct iwm_vap *ivp = IWM_VAP(vap);
 	struct iwm_node *in;
@@ -6320,19 +6199,10 @@ iwm_wme_update(struct ieee80211com *ic)
 	if (vap == NULL)
 		return (0);
 
-#if !defined(__DragonFly__)
-	ieee80211_wme_ic_getparams(ic, &chp);
-
-	IEEE80211_LOCK(ic);
-	for (aci = 0; aci < WME_NUM_AC; aci++)
-		tmp[aci] = chp.cap_wmeParams[aci];
-	IEEE80211_UNLOCK(ic);
-#else
 	IEEE80211_LOCK(ic);
 	for (aci = 0; aci < WME_NUM_AC; aci++)
 		tmp[aci] = ic->ic_wme.wme_chanParams.cap_wmeParams[aci];
 	IEEE80211_UNLOCK(ic);
-#endif
 
 	IWM_LOCK(sc);
 	for (aci = 0; aci < WME_NUM_AC; aci++) {
@@ -6667,11 +6537,7 @@ iwm_detach_local(struct iwm_softc *sc, int do_net80211)
 		ieee80211_draintask(&sc->sc_ic, &sc->sc_es_task);
 	}
 	iwm_stop_device(sc);
-#if defined(__DragonFly__)
 		/* doesn't exist for DFly, DFly drains tasks on free */
-#else
-		taskqueue_drain_all(sc->sc_tq);
-#endif
 	taskqueue_free(sc->sc_tq);
 	if (do_net80211) {
 		IWM_LOCK(sc);
@@ -6745,10 +6611,6 @@ static driver_t iwm_pci_driver = {
 static devclass_t iwm_devclass;
 
 DRIVER_MODULE(iwm, pci, iwm_pci_driver, iwm_devclass, NULL, NULL);
-#if !defined(__DragonFly__)
-MODULE_PNP_INFO("U16:device;P:#;T:vendor=0x8086", pci, iwm_pci_driver,
-    iwm_devices, nitems(iwm_devices));
-#endif
 MODULE_DEPEND(iwm, firmware, 1, 1, 1);
 MODULE_DEPEND(iwm, pci, 1, 1, 1);
 MODULE_DEPEND(iwm, wlan, 1, 1, 1);

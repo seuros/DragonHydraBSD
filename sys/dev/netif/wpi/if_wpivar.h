@@ -125,11 +125,7 @@ struct wpi_vap {
 	struct ieee80211vap	wv_vap;
 
 	struct wpi_buf		wv_bcbuf;
-#if defined(__DragonFly__)
 	struct lock		wv_mtx;
-#else
-	struct mtx		wv_mtx;
-#endif
 
 	uint8_t			wv_gtk;
 #define WPI_VAP_KEY(kid)	(1 << kid)
@@ -171,31 +167,18 @@ struct wpi_softc {
 
 	int			sc_running;
 
-#if defined(__DragonFly__)
 	struct lock		sc_mtx;
-#else
-	struct mtx		sc_mtx;
-#endif
 	struct ieee80211com	sc_ic;
 
-#if defined(__DragonFly__)
 	struct lock		tx_mtx;
-#else
-	struct mtx		tx_mtx;
-#endif
 
 	/* Shared area. */
 	struct wpi_dma_info	shared_dma;
 	struct wpi_shared	*shared;
 
 	struct wpi_tx_ring	txq[WPI_DRV_NTXQUEUES];
-#if defined(__DragonFly__)
 	struct lock		txq_mtx;
 	struct lock		txq_state_mtx;
-#else
-	struct mtx		txq_mtx;
-	struct mtx		txq_state_mtx;
-#endif
 
 	struct wpi_rx_ring	rxq;
 	uint64_t		rx_tstamp;
@@ -222,20 +205,12 @@ struct wpi_softc {
 	int			sc_cap_off;	/* PCIe Capabilities. */
 
 	struct wpi_rxon		rxon;
-#if defined(__DragonFly__)
 	struct lock		rxon_mtx;
-#else
-	struct mtx		rxon_mtx;
-#endif
 
 	int			temp;
 
 	uint32_t		nodesmsk;
-#if defined(__DragonFly__)
 	struct lock		nt_mtx;
-#else
-	struct mtx		nt_mtx;
-#endif
 
 	void			(*sc_node_free)(struct ieee80211_node *);
 	void			(*sc_update_rx_ring)(struct wpi_softc *);
@@ -276,7 +251,6 @@ struct wpi_softc {
  * 6. WPI_TXQ_STATE_LOCK;
  */
 
-#if defined(__DragonFly__)
 
 #define WPI_LOCK_INIT(_sc) \
 	lockinit(&(_sc)->sc_mtx, device_get_nameunit((_sc)->sc_dev), 0, 0);
@@ -316,45 +290,3 @@ struct wpi_softc {
 #define WPI_TXQ_STATE_UNLOCK(_sc)	lockmgr(&(_sc)->txq_state_mtx, LK_RELEASE)
 #define WPI_TXQ_STATE_LOCK_DESTROY(_sc)	lockuninit(&(_sc)->txq_state_mtx)
 
-#else
-
-#define WPI_LOCK_INIT(_sc) \
-	mtx_init(&(_sc)->sc_mtx, device_get_nameunit((_sc)->sc_dev), \
-	    MTX_NETWORK_LOCK, MTX_DEF)
-#define WPI_LOCK(_sc)		mtx_lock(&(_sc)->sc_mtx)
-#define WPI_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
-#define WPI_LOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_mtx, MA_OWNED)
-#define WPI_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->sc_mtx)
-
-#define WPI_RXON_LOCK_INIT(_sc) \
-	mtx_init(&(_sc)->rxon_mtx, "lock for wpi_rxon structure", NULL, MTX_DEF)
-#define WPI_RXON_LOCK(_sc)		mtx_lock(&(_sc)->rxon_mtx)
-#define WPI_RXON_UNLOCK(_sc)		mtx_unlock(&(_sc)->rxon_mtx)
-#define WPI_RXON_LOCK_ASSERT(_sc)	mtx_assert(&(_sc)->rxon_mtx, MA_OWNED)
-#define WPI_RXON_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->rxon_mtx)
-
-#define WPI_TX_LOCK_INIT(_sc) \
-	mtx_init(&(_sc)->tx_mtx, "tx path lock", NULL, MTX_DEF)
-#define WPI_TX_LOCK(_sc)		mtx_lock(&(_sc)->tx_mtx)
-#define WPI_TX_UNLOCK(_sc)		mtx_unlock(&(_sc)->tx_mtx)
-#define WPI_TX_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->tx_mtx)
-
-#define WPI_NT_LOCK_INIT(_sc) \
-	mtx_init(&(_sc)->nt_mtx, "node table lock", NULL, MTX_DEF)
-#define WPI_NT_LOCK(_sc)		mtx_lock(&(_sc)->nt_mtx)
-#define WPI_NT_UNLOCK(_sc)		mtx_unlock(&(_sc)->nt_mtx)
-#define WPI_NT_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->nt_mtx)
-
-#define WPI_TXQ_LOCK_INIT(_sc) \
-	mtx_init(&(_sc)->txq_mtx, "txq/cmdq lock", NULL, MTX_DEF)
-#define WPI_TXQ_LOCK(_sc)		mtx_lock(&(_sc)->txq_mtx)
-#define WPI_TXQ_UNLOCK(_sc)		mtx_unlock(&(_sc)->txq_mtx)
-#define WPI_TXQ_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->txq_mtx)
-
-#define WPI_TXQ_STATE_LOCK_INIT(_sc) \
-	mtx_init(&(_sc)->txq_state_mtx, "txq state lock", NULL, MTX_DEF)
-#define WPI_TXQ_STATE_LOCK(_sc)		mtx_lock(&(_sc)->txq_state_mtx)
-#define WPI_TXQ_STATE_UNLOCK(_sc)	mtx_unlock(&(_sc)->txq_state_mtx)
-#define WPI_TXQ_STATE_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->txq_state_mtx)
-
-#endif

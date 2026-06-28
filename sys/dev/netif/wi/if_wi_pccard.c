@@ -49,10 +49,6 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 
-#if !defined(__DragonFly__)
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/rman.h>
 
 #include <net/if.h>
@@ -62,32 +58,16 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 
-#if defined(__DragonFly__)
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
-#else
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_radiotap.h>
-#endif
 
-#if defined(__DragonFly__)
 #define PCCARD_API_LEVEL 6
 #include <bus/pccard/pccardvar.h>
 #include <bus/pccard/pccard_cis.h>
-#else
-#include <dev/pccard/pccardvar.h>
-#include <dev/pccard/pccard_cis.h>
-#endif
 
-#if defined(__DragonFly__)
 #include "if_wavelan_ieee.h"
 #include "if_wireg.h"
 #include "if_wivar.h"
-#else
-#include <dev/wi/if_wavelan_ieee.h>
-#include <dev/wi/if_wireg.h>
-#include <dev/wi/if_wivar.h>
-#endif
 
 #include "card_if.h"
 #include "pccarddevs.h"
@@ -171,27 +151,15 @@ static const struct pccard_product wi_pccard_products[] = {
 	PCMCIA_CARD(TDK, LAK_CD011WL),
 	{ NULL }
 };
-#if !defined(__DragonFly__)
-PCCARD_PNP_INFO(wi_pccard_products);
-#endif
 
 static int
 wi_pccard_probe(device_t dev)
 {
 	const struct pccard_product *pp;
 	u_int32_t fcn = PCCARD_FUNCTION_UNSPEC;
-#if !defined(__DragonFly__)
-	int error;
-#endif
 
 	/* Make sure we're a network driver */
-#if defined(__DragonFly__)
 	fcn = pccard_get_function_number(dev);
-#else
-	error = pccard_get_function(dev, &fcn);
-	if (error != 0)
-		return error;
-#endif
 	if (fcn != PCCARD_FUNCTION_NETWORK)
 		return ENXIO;
 

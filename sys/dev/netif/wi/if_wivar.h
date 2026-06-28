@@ -70,11 +70,7 @@ struct wi_softc	{
 	struct ieee80211com	sc_ic;
 	struct mbufq		sc_snd;
 	device_t		sc_dev;
-#if defined(__DragonFly__)
 	struct lock		sc_lk;
-#else
-	struct mtx		sc_mtx;
-#endif
 	struct callout		sc_watchdog;
 	int			sc_unit;
 	int			wi_gone;
@@ -175,15 +171,9 @@ struct wi_card_ident {
 #define	WI_RSSI_TO_DBM(sc, rssi) (MIN((sc)->sc_max_rssi, \
     MAX((sc)->sc_min_rssi, (rssi))) - (sc)->sc_dbm_offset)
 
-#if defined(__DragonFly__)
 #define	WI_LOCK(_sc) 		lockmgr(&(_sc)->sc_lk, LK_EXCLUSIVE)
 #define	WI_UNLOCK(_sc)		lockmgr(&(_sc)->sc_lk, LK_RELEASE)
 #define	WI_LOCK_ASSERT(_sc)	KKASSERT(lockstatus(&(_sc)->sc_lk, curthread) == LK_EXCLUSIVE)
-#else
-#define	WI_LOCK(_sc) 		mtx_lock(&(_sc)->sc_mtx)
-#define	WI_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
-#define	WI_LOCK_ASSERT(_sc)	mtx_assert(&(_sc)->sc_mtx, MA_OWNED)
-#endif
 
 int	wi_attach(device_t);
 int	wi_detach(device_t);
