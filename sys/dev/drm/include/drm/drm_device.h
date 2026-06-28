@@ -9,9 +9,7 @@
 #include <drm/drm_hashtab.h>
 #include <drm/drm_mode_config.h>
 
-#ifdef __DragonFly__
 #include <drm/drm_auth.h>	/* for struct drm_lock_data */
-#endif
 
 struct drm_driver;
 struct drm_minor;
@@ -235,7 +233,6 @@ struct drm_device {
 	 * Set by drm_fb_helper_init() and cleared by drm_fb_helper_fini().
 	 */
 	struct drm_fb_helper *fb_helper;
-#ifdef __DragonFly__
 	int		  pci_domain;
 	int		  pci_bus;
 	int		  pci_slot;
@@ -248,7 +245,6 @@ struct drm_device {
 	void		  *drm_ttm_bdev;
 
 	struct drm_lock_data lock;	/* Information on hardware lock	   */
-#endif
 };
 
 #endif

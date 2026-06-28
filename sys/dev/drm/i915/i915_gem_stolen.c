@@ -80,7 +80,6 @@ void i915_gem_stolen_remove_node(struct drm_i915_private *dev_priv,
 	mutex_unlock(&dev_priv->mm.stolen_lock);
 }
 
-#ifdef __DragonFly__
 static
 struct linux_resource * devm_request_mem_region(struct device *dev,
     resource_size_t start, resource_size_t n, const char *name)
@@ -101,7 +100,6 @@ struct linux_resource * devm_request_mem_region(struct device *dev,
 	res = kmalloc(sizeof(*res), M_DRM, GFP_KERNEL);
 	return res;
 }
-#endif	/* __DragonFly__ */
 
 static int i915_adjust_stolen(struct drm_i915_private *dev_priv,
 			      struct linux_resource *dsm)

@@ -659,9 +659,6 @@ static int ct_handle_response(struct intel_guc_ct *ct, const u32 *msg)
 	bool found = false;
 
 	GEM_BUG_ON(!ct_header_is_response(header));
-#ifdef __linux__
-	GEM_BUG_ON(!in_irq());
-#endif
 
 	/* Response payload shall at least include fence and status */
 	if (unlikely(len < 2)) {

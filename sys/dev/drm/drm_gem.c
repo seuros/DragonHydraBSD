@@ -70,13 +70,11 @@
 #include <drm/drm_print.h>
 #include "drm_internal.h"
 
-#ifdef __DragonFly__
 struct drm_gem_mm {
 	struct drm_mm offset_manager;	/**< Offset mgmt for buffer objects */
 	struct drm_open_hash offset_hash; /**< User token hash table for maps */
 	struct unrhdr *idxunr;
 };
-#endif
 
 /** @file drm_gem.c
  *
@@ -1043,9 +1041,7 @@ EXPORT_SYMBOL(drm_gem_mmap);
 void drm_gem_print_info(struct drm_printer *p, unsigned int indent,
 			const struct drm_gem_object *obj)
 {
-#ifdef __DragonFly__
 	drm_printf_indent(p, indent, "gem_obj=%p\n", obj);
-#endif
 	drm_printf_indent(p, indent, "name=%d\n", obj->name);
 	drm_printf_indent(p, indent, "refcount=%u\n",
 			  kref_read(&obj->refcount));
@@ -1059,7 +1055,6 @@ void drm_gem_print_info(struct drm_printer *p, unsigned int indent,
 		obj->dev->driver->gem_print_info(p, indent, obj);
 }
 
-#ifdef __DragonFly__
 static struct drm_gem_object *
 drm_gem_object_from_offset(struct drm_device *dev, vm_ooffset_t offset)
 {
@@ -1107,4 +1102,3 @@ drm_gem_mmap_single(struct drm_device *dev, vm_ooffset_t *offset, vm_size_t size
 	*obj_res = vm_obj;
 	return (0);
 }
-#endif

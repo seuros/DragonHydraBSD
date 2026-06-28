@@ -898,11 +898,7 @@ int radeon_ttm_init(struct radeon_device *rdev)
 	r = ttm_bo_device_init(&rdev->mman.bdev,
 			       rdev->mman.bo_global_ref.ref.object,
 			       &radeon_bo_driver,
-#ifdef __DragonFly__
 			       NULL,
-#else
-			       rdev->ddev->anon_inode->i_mapping,
-#endif
 			       DRM_FILE_PAGE_OFFSET,
 			       rdev->need_dma32);
 	if (r) {

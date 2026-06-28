@@ -38,12 +38,10 @@
 
 #include <drm/drm_prime.h>
 
-#ifdef __DragonFly__
 /* for struct kqinfo */
 #include <sys/event.h>
 /* for d_open_t, d_close_t, and d_read_t */
 #include <sys/device.h>
-#endif
 
 struct dma_fence;
 struct drm_file;
@@ -344,10 +342,8 @@ struct drm_file {
 	/* private: */
 	unsigned long lock_count; /* DRI1 legacy lock count */
 
-#ifdef __DragonFly__
 	struct drm_device *dev;
 	struct kqinfo dkq;
-#endif
 };
 
 /**
@@ -379,15 +375,9 @@ static inline bool drm_is_render_client(const struct drm_file *file_priv)
 	return file_priv->minor->type == DRM_MINOR_RENDER;
 }
 
-#ifdef __DragonFly__
 d_open_t drm_open;
 d_close_t drm_close;
 d_read_t drm_read;
-#else
-int drm_open(struct inode *inode, struct file *filp);
-ssize_t drm_read(struct file *filp, char __user *buffer,
-		 size_t count, loff_t *offset);
-#endif
 
 int drm_release(struct inode *inode, struct file *filp);
 #if 0

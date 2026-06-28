@@ -1668,10 +1668,8 @@ struct drm_i915_private {
 					    [MAX_ENGINE_INSTANCE + 1];
 
 	struct drm_dma_handle *status_page_dmah;
-#ifdef __DragonFly__
 	struct resource *mch_res;
 	int mch_res_rid;
-#endif
 
 	/* protects the irq masks */
 	spinlock_t irq_lock;

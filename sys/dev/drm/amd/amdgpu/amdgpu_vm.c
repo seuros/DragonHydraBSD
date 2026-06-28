@@ -62,11 +62,6 @@
 #define START(node) ((node)->start)
 #define LAST(node) ((node)->last)
 
-#ifdef __linux__
-
-INTERVAL_TREE_DEFINE(struct amdgpu_bo_va_mapping, rb, uint64_t, __subtree_last,
-		     START, LAST, static, amdgpu_vm_it)
-#else
 static struct amdgpu_bo_va_mapping *
 amdgpu_vm_it_iter_first(struct rb_root_cached *root, uint64_t start,
     uint64_t last)
@@ -125,7 +120,6 @@ amdgpu_vm_it_insert(struct amdgpu_bo_va_mapping *node,
 	rb_link_node(&node->rb, parent, iter);
 	rb_insert_color_cached(&node->rb, root, false);
 }
-#endif
 
 #undef START
 #undef LAST
@@ -3313,10 +3307,6 @@ void amdgpu_vm_fini(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 	if (!RB_EMPTY_ROOT(&vm->va.rb_root)) {
 		dev_err(adev->dev, "still active bo inside vm\n");
 	}
-#ifndef __DragonFly__
-	rbtree_postorder_for_each_entry_safe(mapping, tmp,
-					     &vm->va.rb_root, rb) {
-#else
 	/*
 	 * DFly interval tree mock-up does not use RB trees, the RB iterator
 	 * can not be used.
@@ -3324,7 +3314,6 @@ void amdgpu_vm_fini(struct amdgpu_device *adev, struct amdgpu_vm *vm)
 	 */
 	while (vm->va.rb_leftmost) {
 		mapping = container_of((void *)vm->va.rb_leftmost, struct amdgpu_bo_va_mapping, rb);
-#endif
 		/* Don't remove the mapping here, we don't want to trigger a
 		 * rebalance and the tree is about to be destroyed anyway.
 		 */

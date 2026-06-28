@@ -854,7 +854,6 @@ static void __i915_vma_iounmap(struct i915_vma *vma)
 	vma->iomap = NULL;
 }
 
-#ifdef __DragonFly__
 /*
  * XXX: this is a bit of a hammer approach
  * On DragonFly, we invalidate the entire set of gem object pages
@@ -887,7 +886,6 @@ static inline void drm_vma_node_unmap(struct drm_vma_offset_node *node,
 		vm_object_deallocate(devobj);
 	}
 }
-#endif
 
 void i915_vma_revoke_mmap(struct i915_vma *vma)
 {
@@ -903,14 +901,7 @@ void i915_vma_revoke_mmap(struct i915_vma *vma)
 	GEM_BUG_ON(!vma->obj->userfault_count);
 
 	vma_offset = vma->ggtt_view.partial.offset << PAGE_SHIFT;
-#ifdef __DragonFly__
 	drm_vma_node_unmap(node, NULL);
-#else
-	unmap_mapping_range(vma->vm->i915->drm.anon_inode->i_mapping,
-			    drm_vma_node_offset_addr(node) + vma_offset,
-			    vma->size,
-			    1);
-#endif
 
 	i915_vma_unset_userfault(vma);
 	if (!--vma->obj->userfault_count)

@@ -515,7 +515,6 @@ ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
    - struct vm_area_struct *vma
    - struct vm_fault *vmf
 */
-#ifdef __DragonFly__
 	struct vm_area_struct vmas;
 	struct vm_area_struct *vma = &vmas;
 	struct vm_fault vmfs;
@@ -528,7 +527,6 @@ ttm_bo_vm_fault_dfly(vm_object_t vm_obj, vm_ooffset_t offset,
 	vmf->vma = vma;
 
 	int retry_count = 0;
-#endif
 
 	vm_object_pip_add(vm_obj, 1);
 
@@ -563,13 +561,9 @@ retry:
 				down_read(&vma->vm_mm->mmap_sem);
 			}
 
-#ifndef __DragonFly__
-			return VM_FAULT_RETRY;
-#else
 			up_read(&vma->vm_mm->mmap_sem);
 			lwkt_yield();
 			goto retry;
-#endif
 		}
 
 		/*
@@ -663,11 +657,9 @@ retry:
 #endif
 
 	if (bo->mem.bus.is_iomem) {
-#ifdef __DragonFly__
 		m = vm_phys_fictitious_to_vm_page(bo->mem.bus.base +
 						  bo->mem.bus.offset + offset);
 		pmap_page_set_memattr(m, ttm_io_prot(bo->mem.placement, 0));
-#endif
 		cvma.vm_page_prot = ttm_io_prot(bo->mem.placement,
 						cvma.vm_page_prot);
 	} else {
@@ -814,7 +806,6 @@ ttm_bo_mmap_single(struct file *fp, struct drm_device *dev,
 }
 EXPORT_SYMBOL(ttm_bo_mmap_single);
 
-#ifdef __DragonFly__
 void ttm_bo_release_mmap(struct ttm_buffer_object *bo);
 
 void
@@ -850,7 +841,6 @@ ttm_bo_release_mmap(struct ttm_buffer_object *bo)
 
 	vm_object_deallocate(vm_obj);
 }
-#endif
 
 #if 0
 int ttm_fbdev_mmap(struct vm_area_struct *vma, struct ttm_buffer_object *bo)

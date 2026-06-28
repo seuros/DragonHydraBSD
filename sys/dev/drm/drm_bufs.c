@@ -1459,93 +1459,12 @@ int __drm_legacy_mapbufs(struct drm_device *dev, void *data, int *p,
 				 struct drm_buf *),
 				 struct drm_file *file_priv)
 {
-#ifndef __DragonFly__
-	struct drm_device_dma *dma = dev->dma;
-	int retcode = 0;
-	unsigned long virtual;
-	int i;
-
-	if (!drm_core_check_feature(dev, DRIVER_LEGACY))
-		return -EOPNOTSUPP;
-
-	if (!drm_core_check_feature(dev, DRIVER_HAVE_DMA))
-		return -EOPNOTSUPP;
-
-	if (!dma)
-		return -EINVAL;
-
-	lockmgr(&dev->buf_lock, LK_EXCLUSIVE);
-	if (atomic_read(&dev->buf_alloc)) {
-		lockmgr(&dev->buf_lock, LK_RELEASE);
-		return -EBUSY;
-	}
-	dev->buf_use++;		/* Can't allocate more after this call */
-	lockmgr(&dev->buf_lock, LK_RELEASE);
-
-	if (*p >= dma->buf_count) {
-		if ((dev->agp && (dma->flags & _DRM_DMA_USE_AGP))
-		    || (drm_core_check_feature(dev, DRIVER_SG)
-			&& (dma->flags & _DRM_DMA_USE_SG))) {
-			struct drm_local_map *map = dev->agp_buffer_map;
-			unsigned long token = dev->agp_buffer_token;
-
-			if (!map) {
-				retcode = -EINVAL;
-				goto done;
-			}
-			virtual = vm_mmap(file_priv->filp, 0, map->size,
-					  PROT_READ | PROT_WRITE,
-					  MAP_SHARED,
-					  token, NULL);
-		} else {
-			virtual = vm_mmap(file_priv->filp, 0, dma->byte_count,
-					  PROT_READ | PROT_WRITE,
-					  MAP_SHARED,
-					  0, NULL);
-		}
-		if (virtual > -1024UL) {
-			/* Real error */
-			retcode = (signed long)virtual;
-			goto done;
-		}
-		*v = (void __user *)virtual;
-
-		for (i = 0; i < dma->buf_count; i++) {
-			if (f(data, i, virtual, dma->buflist[i]) < 0) {
-				retcode = -EFAULT;
-				goto done;
-			}
-		}
-	}
-      done:
-	*p = dma->buf_count;
-	DRM_DEBUG("%d buffers, retcode = %d\n", *p, retcode);
-
-	return retcode;
-#else
 	return -EINVAL;
-#endif
 }
 
 static int map_one_buf(void *data, int idx, unsigned long virtual,
 			struct drm_buf *buf)
 {
-#ifndef __DragonFly__
-	struct drm_buf_map *request = data;
-	unsigned long address = virtual + buf->offset;	/* *** */
-
-	if (copy_to_user(&request->list[idx].idx, &buf->idx,
-			 sizeof(request->list[0].idx)))
-		return -EFAULT;
-	if (copy_to_user(&request->list[idx].total, &buf->total,
-			 sizeof(request->list[0].total)))
-		return -EFAULT;
-	if (clear_user(&request->list[idx].used, sizeof(int)))
-		return -EFAULT;
-	if (copy_to_user(&request->list[idx].address, &address,
-			 sizeof(address)))
-		return -EFAULT;
-#endif
 	return 0;
 }
 

@@ -36,28 +36,11 @@
 #ifndef _DRM_H_
 #define _DRM_H_
 
-#if defined(__KERNEL__) || defined(__DragonFly__)
 
 #include <linux/types.h>
 #include <asm/ioctl.h>
 typedef unsigned int drm_handle_t;
 
-#else /* One of the BSDs */
-
-#include <sys/ioccom.h>
-#include <sys/types.h>
-typedef int8_t   __s8;
-typedef uint8_t  __u8;
-typedef int16_t  __s16;
-typedef uint16_t __u16;
-typedef int32_t  __s32;
-typedef uint32_t __u32;
-typedef int64_t  __s64;
-typedef uint64_t __u64;
-typedef size_t   __kernel_size_t;
-typedef unsigned long drm_handle_t;
-
-#endif
 
 #if defined(__cplusplus)
 extern "C" {
@@ -708,7 +691,6 @@ struct drm_prime_handle {
 	__s32 fd;
 };
 
-#if defined(__OpenBSD__) || defined(__DragonFly__)
 struct drm_pciinfo {
 	uint16_t	domain;
 	uint8_t		bus;
@@ -720,7 +702,6 @@ struct drm_pciinfo {
 	uint16_t	subdevice_id;
 	uint8_t		revision_id;
 };
-#endif
 
 struct drm_syncobj_create {
 	__u32 handle;
@@ -819,11 +800,7 @@ extern "C" {
 #define DRM_IOCTL_BLOCK			DRM_IOWR(0x12, struct drm_block)
 #define DRM_IOCTL_UNBLOCK		DRM_IOWR(0x13, struct drm_block)
 #define DRM_IOCTL_CONTROL		DRM_IOW( 0x14, struct drm_control)
-#if defined(__OpenBSD__) || defined(__DragonFly__)
 #define DRM_IOCTL_GET_PCIINFO		DRM_IOR( 0x15, struct drm_pciinfo)
-#else
-#define DRM_IOCTL_ADD_MAP		DRM_IOWR(0x15, struct drm_map)
-#endif
 #define DRM_IOCTL_ADD_BUFS		DRM_IOWR(0x16, struct drm_buf_desc)
 #define DRM_IOCTL_MARK_BUFS		DRM_IOW( 0x17, struct drm_buf_desc)
 #define DRM_IOCTL_INFO_BUFS		DRM_IOWR(0x18, struct drm_buf_info)

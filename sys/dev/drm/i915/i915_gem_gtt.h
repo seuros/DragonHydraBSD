@@ -38,9 +38,7 @@
 #include <linux/mm.h>
 #include <linux/pagevec.h>
 
-#ifdef __DragonFly__
 #include <linux/pci.h>
-#endif
 
 #include "i915_request.h"
 #include "i915_selftest.h"

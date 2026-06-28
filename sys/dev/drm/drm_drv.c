@@ -49,7 +49,6 @@
  * drm_debug: Enable debug output.
  * Bitmask of DRM_UT_x. See include/drm/drmP.h for details.
  */
-#ifdef __DragonFly__
 /* Provides three levels of debug: off, minimal, verbose */
 #if DRM_DEBUG_DEFAULT_ON == 1
 #define DRM_DEBUGBITS_ON (DRM_UT_CORE | DRM_UT_DRIVER | DRM_UT_KMS |	\
@@ -63,9 +62,6 @@
 #endif
 
 unsigned int drm_debug = DRM_DEBUGBITS_ON;	/* defaults to 0 */
-#else
-unsigned int drm_debug = 0;
-#endif /* __DragonFly__ */
 EXPORT_SYMBOL(drm_debug);
 
 MODULE_AUTHOR("Gareth Hughes, Leif Delgass, José Fonseca, Jon Smirl");
@@ -540,11 +536,9 @@ int drm_dev_init(struct drm_device *dev,
 		 struct device *parent)
 {
 	int ret;
-#ifdef __DragonFly__
 	struct drm_softc *softc = device_get_softc(parent->bsddev);
 
 	softc->drm_driver_data = dev;
-#endif
 
 	if (!drm_core_init_complete) {
 		DRM_ERROR("DRM core is not initialized\n");
@@ -574,21 +568,12 @@ int drm_dev_init(struct drm_device *dev,
 	lockinit(&dev->ctxlist_mutex, "drmclm", 0, LK_CANRECURSE);
 	lockinit(&dev->master_mutex, "drmmm", 0, LK_CANRECURSE);
 
-#ifndef __DragonFly__
-	dev->anon_inode = drm_fs_inode_new();
-	if (IS_ERR(dev->anon_inode)) {
-		ret = PTR_ERR(dev->anon_inode);
-		DRM_ERROR("Cannot allocate anonymous inode: %d\n", ret);
-		goto err_free;
-	}
-#else
 	dev->anon_inode = NULL;
 	dev->pci_domain = pci_get_domain(dev->dev->bsddev);
 	dev->pci_bus = pci_get_bus(dev->dev->bsddev);
 	dev->pci_slot = pci_get_slot(dev->dev->bsddev);
 	dev->pci_func = pci_get_function(dev->dev->bsddev);
 	drm_sysctl_init(dev);
-#endif
 
 	if (drm_core_check_feature(dev, DRIVER_RENDER)) {
 		ret = drm_minor_alloc(dev, DRM_MINOR_RENDER);
@@ -635,18 +620,12 @@ err_ctxbitmap:
 err_minors:
 	drm_minor_free(dev, DRM_MINOR_PRIMARY);
 	drm_minor_free(dev, DRM_MINOR_RENDER);
-#ifndef __DragonFly__
-	drm_fs_inode_free(dev->anon_inode);
-err_free:
-#endif
 	mutex_destroy(&dev->master_mutex);
 	mutex_destroy(&dev->ctxlist_mutex);
 	mutex_destroy(&dev->clientlist_mutex);
 	mutex_destroy(&dev->filelist_mutex);
 	mutex_destroy(&dev->struct_mutex);
-#ifdef __DragonFly__
 	drm_sysctl_cleanup(dev);
-#endif
 	return ret;
 }
 EXPORT_SYMBOL(drm_dev_init);
@@ -818,13 +797,7 @@ static int create_compat_control_link(struct drm_device *dev)
 	if (!name)
 		return -ENOMEM;
 
-#ifndef __DragonFly__	/* DragonFly's libdrm does not need this */
-	ret = sysfs_create_link(minor->kdev->kobj.parent,
-				&minor->kdev->kobj,
-				name);
-#else
 	ret = 0;
-#endif
 
 	kfree(name);
 
@@ -847,9 +820,6 @@ static void remove_compat_control_link(struct drm_device *dev)
 	if (!name)
 		return;
 
-#ifndef __DragonFly__
-	sysfs_remove_link(minor->kdev->kobj.parent, name);
-#endif
 
 	kfree(name);
 }
@@ -1168,11 +1138,9 @@ drm_create_cdevs(device_t kdev)
 {
 	struct drm_device *dev;
 	int error, unit;
-#ifdef __DragonFly__
 	struct drm_softc *softc = device_get_softc(kdev);
 
 	dev = softc->drm_driver_data;
-#endif
 	unit = device_get_unit(kdev);
 
 	dev->devnode = make_dev(&drm_cdevsw, unit, DRM_DEV_UID, DRM_DEV_GID,

@@ -29,9 +29,7 @@ struct i915_vma;
 
 #include "intel_guc_fwif.h"
 
-#ifdef __DragonFly__
 #include <linux/workqueue.h>
-#endif
 
 /**
  * DOC: Command Transport (CT).

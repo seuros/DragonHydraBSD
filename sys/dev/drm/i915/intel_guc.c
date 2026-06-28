@@ -27,9 +27,7 @@
 #include "intel_guc_submission.h"
 #include "i915_drv.h"
 
-#ifdef __DragonFly__
 #include <linux/sizes.h>
-#endif
 
 static void gen8_guc_raise_irq(struct intel_guc *guc)
 {

@@ -297,11 +297,7 @@ static bool amdgpu_atrm_get_bios(struct amdgpu_device *adev)
 		DRM_INFO("%s: Get ACPI device handle\n", __func__);
 		dhandle = acpi_get_handle(dev);
 		if (!dhandle)
-#ifndef __DragonFly__
- 			continue;
-#else
 			return false;
-#endif
 
 		DRM_INFO("%s: Get ACPI handle for \"ATRM\"\n", __func__);
 		status = AcpiGetHandle(dhandle, "ATRM", &atrm_handle);
@@ -381,14 +377,9 @@ static bool amdgpu_acpi_vfct_bios(struct amdgpu_device *adev)
 	unsigned offset;
 	ACPI_STATUS status;
 
-#ifndef __DragonFly__
- 	if (!ACPI_SUCCESS(acpi_get_table_with_size("VFCT", 1, &hdr, &tbl_size)))
- 		return false;
-#else
 	status = AcpiGetTable("VFCT", 1, &hdr);
 	if (!ACPI_SUCCESS(status))
 		return false;
-#endif
 	tbl_size = hdr->Length;
 	if (tbl_size < sizeof(UEFI_ACPI_VFCT)) {
 		DRM_ERROR("ACPI VFCT table present but broken (too short #1)\n");

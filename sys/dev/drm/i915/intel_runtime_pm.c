@@ -4038,27 +4038,6 @@ void intel_runtime_pm_get(struct drm_i915_private *dev_priv)
  */
 bool intel_runtime_pm_get_if_in_use(struct drm_i915_private *dev_priv)
 {
-#ifndef __DragonFly__
-	struct pci_dev *pdev = dev_priv->drm.pdev;
-	struct device *kdev = &pdev->dev;
-
-	if (IS_ENABLED(CONFIG_PM)) {
-		struct pci_dev *pdev = dev_priv->drm.pdev;
-		struct device *kdev = &pdev->dev;
-
-		/*
-		 * In cases runtime PM is disabled by the RPM core and we get
-		 * an -EINVAL return value we are not supposed to call this
-		 * function, since the power state is undefined. This applies
-		 * atm to the late/early system suspend/resume handlers.
-		 */
-		if (pm_runtime_get_if_in_use(kdev) <= 0)
-			return false;
-	}
-
-	atomic_inc(&dev_priv->runtime_pm.wakeref_count);
-	assert_rpm_wakelock_held(dev_priv);
-#endif
 
 	return true;
 }

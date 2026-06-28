@@ -170,13 +170,8 @@ void drm_warn_on_modeset_not_all_locked(struct drm_device *dev)
 	struct drm_crtc *crtc;
 
 	/* Locking is currently fubar in the panic handler. */
-#ifdef __DragonFly__
 	if (panicstr)
 		return;
-#else
-	if (oops_in_progress)
-		return;
-#endif
 
 	drm_for_each_crtc(crtc, dev)
 		WARN_ON(!drm_modeset_is_locked(&crtc->mutex));

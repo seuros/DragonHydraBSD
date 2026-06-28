@@ -668,13 +668,7 @@ out:
  */
 bool drm_kms_helper_is_poll_worker(void)
 {
-#ifndef __DragonFly__
-	struct work_struct *work = current_work();
-
-	return work && work->func == output_poll_execute;
-#else
 	return false;
-#endif
 }
 EXPORT_SYMBOL(drm_kms_helper_is_poll_worker);
 

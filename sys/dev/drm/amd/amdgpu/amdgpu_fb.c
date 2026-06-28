@@ -257,7 +257,6 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 	/* setup helper */
 	rfbdev->helper.fb = fb;
 
-#ifdef __DragonFly__
 	info->width = sizes->fb_width;
 	info->height = sizes->fb_height;
 	info->stride = fb->pitches[0];
@@ -268,33 +267,6 @@ static int amdgpufb_create(struct drm_fb_helper *helper,
 	unsigned long tmp = amdgpu_bo_gpu_offset(abo) - adev->gmc.vram_start;
 	info->vaddr = (vm_offset_t)amdgpu_bo_kptr(abo);
 	info->paddr = adev->gmc.aper_base + tmp;
-#else
-
-	strcpy(info->fix.id, "amdgpudrmfb");
-
-	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->format->depth);
-
-	info->fbops = &amdgpufb_ops;
-
-	tmp = amdgpu_bo_gpu_offset(abo) - adev->gmc.vram_start;
-	info->fix.smem_start = adev->gmc.aper_base + tmp;
-	info->fix.smem_len = amdgpu_bo_size(abo);
-	info->screen_base = amdgpu_bo_kptr(abo);
-	info->screen_size = amdgpu_bo_size(abo);
-
-	drm_fb_helper_fill_var(info, &rfbdev->helper, sizes->fb_width, sizes->fb_height);
-
-	/* setup aperture base/size for vesafb takeover */
-	info->apertures->ranges[0].base = adev->ddev->mode_config.fb_base;
-	info->apertures->ranges[0].size = adev->gmc.aper_size;
-
-	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
-
-	if (info->screen_base == NULL) {
-		ret = -ENOSPC;
-		goto out;
-	}
-#endif
 
 	DRM_INFO("fb mappable at 0x%lX\n",  info->paddr);
 	DRM_INFO("vram apper at 0x%lX\n",  (unsigned long)adev->gmc.aper_base);

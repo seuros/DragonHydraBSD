@@ -4,9 +4,7 @@
  * Copyright © 2014-2018 Intel Corporation
  */
 
-#ifdef __DragonFly__
 #include <linux/list.h>
-#endif
 
 #include "i915_gem_batch_pool.h"
 #include "i915_drv.h"

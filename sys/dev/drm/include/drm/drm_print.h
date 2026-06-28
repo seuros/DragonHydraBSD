@@ -279,11 +279,9 @@ static inline struct drm_printer drm_debug_printer(const char *prefix)
 #define DRM_UT_LEASE		0x080
 #define DRM_UT_DP		0x100
 /* Extra DragonFly debug categories */
-#ifdef __DragonFly__
 #define DRM_UT_PID		0x200
 #define DRM_UT_FIOCTL		0x400
 #define DRM_UT_IOCTL		0x800
-#endif
 
 #if 0
 
@@ -413,13 +411,11 @@ void drm_err(const char *func, const char *format, ...);
 #define DRM_DEBUG_VBL(fmt, ...)						\
 	drm_dbg(__func__, DRM_UT_VBL, fmt, ##__VA_ARGS__)
 
-#ifdef __DragonFly__
 #define DRM_DEBUG_FIOCTL(fmt, ...)					\
 	drm_dbg(__func__, DRM_UT_FIOCTL, fmt, ##__VA_ARGS__)
 #define DRM_DEBUG_IOCTL(fmt, ...)					\
 	drm_dbg(__func__, DRM_UT_IOCTL, fmt, ##__VA_ARGS__)
 #define DRM_DEBUG_VBLANK	DRM_DEBUG_VBL
-#endif	/* __DragonFly__ */
 
 #define DRM_DEBUG_LEASE(fmt, ...)					\
 	drm_dbg(__func__, DRM_UT_LEASE, fmt, ##__VA_ARGS__)

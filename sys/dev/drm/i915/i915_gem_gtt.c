@@ -2962,12 +2962,10 @@ int i915_gem_init_ggtt(struct drm_i915_private *dev_priv)
 				     hole_end - hole_start);
 	}
 
-#ifdef __DragonFly__
 	DRM_INFO("taking over the fictitious range 0x%lx-0x%lx\n",
 	    dev_priv->ggtt.gmadr.start, dev_priv->ggtt.mappable_end);
 	vm_phys_fictitious_reg_range(dev_priv->ggtt.gmadr.start,
 	     dev_priv->ggtt.gmadr.start + mappable, VM_MEMATTR_WRITE_COMBINING);
-#endif
 
 	/* And finally clear the reserved guard page */
 	ggtt->vm.clear_range(&ggtt->vm, ggtt->vm.total - PAGE_SIZE, PAGE_SIZE);

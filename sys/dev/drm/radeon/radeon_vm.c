@@ -1236,9 +1236,6 @@ void radeon_vm_fini(struct radeon_device *rdev, struct radeon_vm *vm)
 	if (!RB_EMPTY_ROOT(&vm->va)) {
 		dev_err(rdev->dev, "still active bo inside vm\n");
 	}
-#ifndef __DragonFly__
-	rbtree_postorder_for_each_entry_safe(bo_va, tmp, &vm->va, it.rb) {
-#else
 	/*
 	 * DFly interval tree mock-up does not use RB trees, the RB iterator
 	 * may not be used.
@@ -1249,7 +1246,6 @@ void radeon_vm_fini(struct radeon_device *rdev, struct radeon_vm *vm)
 	 */
 	while (vm->va.rb_node) {
 		bo_va = container_of((void *)vm->va.rb_node, struct radeon_bo_va, it);
-#endif
 		r = radeon_bo_reserve(bo_va->bo, false);
 		if (!r) {
 			interval_tree_remove(&bo_va->it, &vm->va);

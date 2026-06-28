@@ -183,9 +183,7 @@ int drm_dp_bw_code_to_link_rate(u8 link_bw)
 }
 EXPORT_SYMBOL(drm_dp_bw_code_to_link_rate);
 
-#ifdef __DragonFly__ /* 500 is too low on DragonFly */
 #define AUX_RETRY_INTERVAL 5000 /* us */
-#endif
 
 static inline void
 drm_dp_dump_access(const struct drm_dp_aux *aux,

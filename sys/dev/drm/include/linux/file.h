@@ -31,9 +31,7 @@
 #include <linux/types.h>
 #include <linux/posix_types.h>
 
-#ifdef __DragonFly__
 #include <sys/filedesc.h>
-#endif
 
 static inline int
 get_unused_fd_flags(unsigned flags)

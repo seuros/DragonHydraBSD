@@ -34,10 +34,8 @@
 
 #include <sys/sysctl.h>
 
-#ifdef __DragonFly__
 /* for vm_area_struct */
 #include <linux/mm_types.h>
-#endif
 
 #include <drm/drm_device.h>
 
@@ -614,11 +612,9 @@ struct drm_driver {
 	int (*dma_quiescent) (struct drm_device *);
 	int (*context_dtor) (struct drm_device *dev, int context);
 	int dev_priv_size;
-#ifdef __DragonFly__
        int (*sysctl_init) (struct drm_device *dev,
                    struct sysctl_ctx_list *ctx, struct sysctl_oid *top);
        void (*sysctl_cleanup) (struct drm_device *dev);
-#endif /* __DragonFly__ */
 };
 
 extern unsigned int drm_debug;

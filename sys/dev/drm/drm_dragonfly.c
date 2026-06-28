@@ -255,7 +255,6 @@ int drm_device_detach(device_t kdev)
 
 	drm_sysctl_cleanup(dev);
 
-#ifdef __DragonFly__
 #if 0
 	/* Clean up PCI resources allocated by drm_bufs.c.  We're not really
 	 * worried about resource consumption while the DRM is inactive (between
@@ -288,7 +287,6 @@ int drm_device_detach(device_t kdev)
 	lockuninit(&dev->vbl_lock);
 	lockuninit(&dev->event_lock);
 	lockuninit(&dev->struct_mutex);
-#endif
 
 	drm_fini_pdev(&dev->pdev);
 

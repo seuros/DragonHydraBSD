@@ -29,9 +29,7 @@
 #ifndef DRM_ATOMIC_UAPI_H_
 #define DRM_ATOMIC_UAPI_H_
 
-#ifdef __DragonFly__
 #include <linux/compiler.h>
-#endif
 
 struct drm_crtc_state;
 struct drm_display_mode;

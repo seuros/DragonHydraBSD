@@ -30,9 +30,7 @@
 #include "resource.h"
 #include "include/irq_service_interface.h"
 #include "../virtual/virtual_stream_encoder.h"
-#ifdef __DragonFly__
 #include "dce100/dce100_resource.h"
-#endif
 #include "dce110/dce110_resource.h"
 #include "dce110/dce110_timing_generator.h"
 #include "irq/dce110/irq_service_dce110.h"

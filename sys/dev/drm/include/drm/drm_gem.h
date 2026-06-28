@@ -95,11 +95,7 @@ struct drm_gem_object {
 	 * storage (contiguous CMA memory, special reserved blocks). In this
 	 * case @filp is NULL.
 	 */
-#ifdef __DragonFly__
 	struct vm_object *filp;
-#else
-	struct file *filp;
-#endif
 
 	/**
 	 * @vma_node:
@@ -112,10 +108,8 @@ struct drm_gem_object {
 	 * that userspace is allowed to access the object.
 	 */
 	struct drm_vma_offset_node vma_node;
-#ifdef __DragonFly__
 	bool on_map;
 	struct drm_hash_item map_list;
-#endif
 
 	/**
 	 * @size:

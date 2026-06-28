@@ -394,9 +394,7 @@ ttm_pool_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
 	unsigned long freed = 0;
 	unsigned int nr_free_pool;
 
-#ifdef __DragonFly__
 	sc->gfp_mask = M_WAITOK;
-#endif
 
 	if (!mutex_trylock(&lock))
 		return SHRINK_STOP;

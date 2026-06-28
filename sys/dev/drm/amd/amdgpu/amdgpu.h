@@ -868,10 +868,8 @@ struct amdgpu_device {
 #if 0
 	void __iomem			*rmmio;
 #endif
-#ifdef __DragonFly__
 	int				rmmio_rid;
 	struct resource			*rmmio;
-#endif
 	/* protects concurrent MM_INDEX/DATA based register access */
 	spinlock_t mmio_idx_lock;
 	/* protects concurrent SMC based register access */
@@ -907,10 +905,8 @@ struct amdgpu_device {
 #if 0
 	void __iomem                    *rio_mem;
 #endif
-#ifdef __DragonFly__
 	int				rio_rid;
 	struct resource			*rio_mem;
-#endif
 	resource_size_t			rio_mem_size;
 	struct amdgpu_doorbell		doorbell;
 
@@ -1042,13 +1038,11 @@ struct amdgpu_device {
 	unsigned long last_mm_index;
 	bool                            in_gpu_reset;
 	struct lock  lock_reset;
-#ifdef __DragonFly__
 	struct {
 		ACPI_HANDLE		handle;
 		ACPI_NOTIFY_HANDLER	notifier_call;
 	} acpi;
 	bool				fictitious_range_registered;
-#endif
 };
 
 static inline struct amdgpu_device *amdgpu_ttm_adev(struct ttm_bo_device *bdev)

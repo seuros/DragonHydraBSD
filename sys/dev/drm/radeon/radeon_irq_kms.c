@@ -300,15 +300,6 @@ int radeon_irq_kms_init(struct radeon_device *rdev)
 	/* enable msi */
 	rdev->msi_enabled = (rdev->ddev->pdev->_irq_type == PCI_INTR_TYPE_MSI);
 
-#ifndef __DragonFly__
-	if (radeon_msi_ok(rdev)) {
-		int ret = pci_enable_msi(rdev->pdev);
-		if (!ret) {
-			rdev->msi_enabled = 1;
-			dev_info(rdev->dev, "radeon: using MSI.\n");
-		}
-	}
-#endif
 
 	INIT_DELAYED_WORK(&rdev->hotplug_work, radeon_hotplug_work_func);
 	INIT_WORK(&rdev->dp_work, radeon_dp_work_func);
@@ -338,10 +329,6 @@ void radeon_irq_kms_fini(struct radeon_device *rdev)
 	if (rdev->irq.installed) {
 		drm_irq_uninstall(rdev->ddev);
 		rdev->irq.installed = false;
-#ifndef __DragonFly__
-		if (rdev->msi_enabled)
-			pci_disable_msi(rdev->pdev);
-#endif
 		flush_delayed_work(&rdev->hotplug_work);
 	}
 }

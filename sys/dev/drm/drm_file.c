@@ -129,11 +129,7 @@ struct drm_file *drm_file_alloc(struct drm_minor *minor)
 	if (!file)
 		return ERR_PTR(-ENOMEM);
 
-#ifdef __DragonFly__
 	file->pid = curproc->p_pid;
-#else
-	file->pid = get_pid(task_pid(current));
-#endif
 	file->minor = minor;
 
 	/* for compatibility root is always authenticated */
@@ -311,12 +307,10 @@ int drm_open(struct inode *inode, struct file *filp)
 #endif
 int drm_open(struct dev_open_args *ap)
 {
-#ifdef __DragonFly__
 	struct file *filp = ap->a_fpp ? *ap->a_fpp : NULL;
 	struct inode *inode = filp->f_data;	/* A Linux inode is a Unix vnode */
 	struct cdev *kdev = ap->a_head.a_dev;
 	int flags = ap->a_oflags;
-#endif
 	struct drm_device *dev;
 	struct drm_minor *minor;
 	int retcode;
@@ -335,11 +329,7 @@ int drm_open(struct dev_open_args *ap)
 	filp->f_mapping = dev->anon_inode->i_mapping;
 #endif
 
-#ifdef __DragonFly__
 	retcode = drm_open_helper(kdev, flags, filp, minor);
-#else
-	retcode = drm_open_helper(filp, minor);
-#endif
 	if (retcode)
 		goto err_undo;
 	if (need_setup) {
@@ -347,9 +337,7 @@ int drm_open(struct dev_open_args *ap)
 		if (retcode)
 			goto err_undo;
 	}
-#ifdef __DragonFly__
 	device_busy(dev->dev->bsddev);
-#endif
 	return 0;
 
 err_undo:
@@ -365,10 +353,8 @@ EXPORT_SYMBOL(drm_open);
 int
 drm_close(struct dev_close_args *ap)
 {
-#ifdef __DragonFly__
 	struct file *filp = ap->a_fp;
 	struct inode *inode = filp->f_data;	/* A Linux inode is a Unix vnode */
-#endif
 	struct drm_file *file_priv = filp->private_data;
 	struct drm_minor *minor = drm_minor_acquire(iminor(inode));
 	struct drm_device *dev = minor->dev;
@@ -493,9 +479,7 @@ static int drm_open_helper(struct cdev *kdev, int flags,
 	if (IS_ERR(priv))
 		return PTR_ERR(priv);
 
-#ifdef __DragonFly__
 	kdev->si_drv1 = dev;
-#endif
 
 	if (drm_is_primary_client(priv)) {
 		ret = drm_master_open(priv);
@@ -598,10 +582,8 @@ int drm_release(struct inode *inode, struct file *filp)
 	struct drm_minor *minor = file_priv->minor;
 	struct drm_device *dev = minor->dev;
 
-#ifdef __DragonFly__
 	/* dev is not correctly set yet */
 	return 0;
-#endif
 
 	mutex_lock(&drm_global_mutex);
 
@@ -946,9 +928,7 @@ void drm_send_event_locked(struct drm_device *dev, struct drm_pending_event *e)
 	list_add_tail(&e->link,
 		      &e->file_priv->event_list);
 	wake_up_interruptible(&e->file_priv->event_wait);
-#ifdef __DragonFly__
 	KNOTE(&e->file_priv->dkq.ki_note, 0);
-#endif
 }
 EXPORT_SYMBOL(drm_send_event_locked);
 

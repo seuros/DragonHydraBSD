@@ -237,20 +237,9 @@ int amdgpu_irq_init(struct amdgpu_device *adev)
 	lockinit(&adev->irq.lock, "agail", 0, LK_CANRECURSE);
 
 	/* Enable MSI if not disabled by module parameter */
-#ifndef __DragonFly__
- 	adev->irq.msi_enabled = false;
-#else
 	adev->irq.msi_enabled = (adev->ddev->pdev->_irq_type == PCI_INTR_TYPE_MSI);
-#endif
 
 	if (amdgpu_msi_ok(adev)) {
-#ifndef __DragonFly__
-		int ret = pci_enable_msi(adev->pdev);
-		if (!ret) {
-			adev->irq.msi_enabled = true;
-			dev_dbg(adev->dev, "amdgpu: using MSI.\n");
-		}
-#endif
 	}
 
 	if (!amdgpu_device_has_dc_support(adev)) {
@@ -301,10 +290,6 @@ void amdgpu_irq_fini(struct amdgpu_device *adev)
 	if (adev->irq.installed) {
 		drm_irq_uninstall(adev->ddev);
 		adev->irq.installed = false;
-#ifndef __DragonFly__
-		if (adev->irq.msi_enabled)
-			pci_disable_msi(adev->pdev);
-#endif
 		if (!amdgpu_device_has_dc_support(adev))
 			flush_work(&adev->hotplug_work);
 		cancel_work_sync(&adev->reset_work);

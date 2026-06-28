@@ -1572,9 +1572,7 @@ i915_gem_shmem_pwrite(struct drm_i915_gem_object *obj,
 	unsigned int needs_clflush;
 	unsigned int offset, idx;
 	int ret;
-#ifdef __DragonFly__
 	vm_object_t vm_obj;
-#endif
 
 	ret = mutex_lock_interruptible(&i915->drm.struct_mutex);
 	if (ret)
@@ -1600,11 +1598,9 @@ i915_gem_shmem_pwrite(struct drm_i915_gem_object *obj,
 	user_data = u64_to_user_ptr(args->data_ptr);
 	remain = args->size;
 	offset = offset_in_page(args->offset);
-#ifdef __DragonFly__
 	vm_obj = obj->base.filp;
 	VM_OBJECT_LOCK(vm_obj);
 	vm_object_pip_add(vm_obj, 1);
-#endif
 	for (idx = args->offset >> PAGE_SHIFT; remain; idx++) {
 		struct page *page = i915_gem_object_get_page(obj, idx);
 		unsigned int length = min_t(u64, remain, PAGE_SIZE - offset);
@@ -1620,14 +1616,12 @@ i915_gem_shmem_pwrite(struct drm_i915_gem_object *obj,
 		user_data += length;
 		offset = 0;
 	}
-#ifdef __DragonFly__
 	if (vm_obj != obj->base.filp) {
 		kprintf("i915_gem_shmem_pwrite: VM_OBJECT CHANGED! %p %p\n",
 			vm_obj, obj->base.filp);
 	}
 	vm_object_pip_wakeup(vm_obj);
 	VM_OBJECT_UNLOCK(vm_obj);
-#endif
 
 	intel_fb_obj_flush(obj, ORIGIN_CPU);
 	i915_gem_obj_finish_shmem_access(obj);
@@ -1884,7 +1878,6 @@ __vma_matches(struct vm_area_struct *vma, struct file *filp,
 }
 #endif
 
-#ifdef __DragonFly__
 static int
 vm_object_map_wc_callback(vm_page_t p, void *data)
 {
@@ -1892,7 +1885,6 @@ vm_object_map_wc_callback(vm_page_t p, void *data)
 
 	return 0;
 }
-#endif
 
 /**
  * i915_gem_mmap_ioctl - Maps the contents of an object, returning the address
@@ -1921,14 +1913,12 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 	struct drm_i915_gem_mmap *args = data;
 	struct drm_i915_gem_object *obj;
 	unsigned long addr;
-#ifdef __DragonFly__
 	struct proc *p = curproc;
 	vm_map_t map = &p->p_vmspace->vm_map;
 	vm_size_t size;
 	int error = 0, rv;
 	struct vm_object *vm_obj;
 	struct rb_vm_page_scan_info info;
-#endif
 
 	if (args->flags & ~(I915_MMAP_WC)) {
 		DRM_DEBUG("args->flags & ~(I915_MMAP_WC) = %lld\n", args->flags);
@@ -1957,7 +1947,6 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 		return -ENXIO;
 	}
 
-#ifdef __DragonFly__
 	if (args->size == 0)
 		goto out;
 
@@ -2009,11 +1998,6 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 			DRM_ERROR("inherit_error!\n");
 		}
 	}
-#else
-	addr = vm_mmap(obj->base.filp, 0, args->size,
-		       PROT_READ | PROT_WRITE, MAP_SHARED,
-		       args->offset);
-#endif	/* __DragonFly__ */
 	if (args->flags & I915_MMAP_WC) {	/* I915_PARAM_MMAP_VERSION */
 		struct mm_struct *mm = current->mm;
 #if 0
@@ -2025,7 +2009,6 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 			DRM_DEBUG("down_write_killable\n");
 			return -EINTR;
 		}
-#ifdef __DragonFly__
 		vm_obj = obj->base.filp;
 		vm_object_hold(vm_obj);
 		vm_obj->memattr = pgprot_writecombine(vm_obj->memattr);
@@ -2039,14 +2022,6 @@ i915_gem_mmap_ioctl(struct drm_device *dev, void *data,
 			&info				/* *data */
 		);
 		vm_object_drop(vm_obj);
-#else
-		vma = find_vma(mm, addr);
-		if (vma && __vma_matches(vma, obj->base.filp, addr, args->size))
-			vma->vm_page_prot =
-				pgprot_writecombine(vm_get_page_prot(vma->vm_flags));
-		else
-			addr = -ENOMEM;
-#endif	/* __DragonFly__ */
 		up_write(&mm->mmap_sem);
 
 		/* This may race, but that's ok, it only gets set */
@@ -2148,7 +2123,6 @@ compute_partial_view(const struct drm_i915_gem_object *obj,
 	return view;
 }
 
-#ifdef __DragonFly__
 static inline void drm_vma_node_unmap(struct drm_vma_offset_node *node,
 				      struct address_space *file_mapping)
 {
@@ -2164,7 +2138,6 @@ static inline void drm_vma_node_unmap(struct drm_vma_offset_node *node,
 		vm_object_deallocate(devobj);
 	}
 }
-#endif
 
 static void __i915_gem_object_release_mmap(struct drm_i915_gem_object *obj)
 {
@@ -2174,12 +2147,7 @@ static void __i915_gem_object_release_mmap(struct drm_i915_gem_object *obj)
 
 	obj->userfault_count = 0;
 	list_del(&obj->userfault_link);
-#ifdef __DragonFly__
 	drm_vma_node_unmap(&obj->base.vma_node, NULL);
-#else
-	drm_vma_node_unmap(&obj->base.vma_node,
-			   obj->base.dev->anon_inode->i_mapping);
-#endif
 
 	list_for_each_entry(vma, &obj->vma_list, obj_link) {
 		if (!i915_vma_is_ggtt(vma))
@@ -2239,7 +2207,6 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 	pgoff_t page_offset;
 	vm_page_t m;
 	int ret;
-#ifdef __DragonFly__
 	int didref = 0;
 	struct vm_area_struct vmas;
 
@@ -2252,7 +2219,6 @@ int i915_gem_fault(vm_object_t vm_obj, vm_ooffset_t offset, int prot, vm_page_t 
 	// XXX: in Linux, mmap_sem is held on entry of this function
 	// XXX: should that be an exclusive lock ?
 	down_read(&area->vm_mm->mmap_sem);
-#endif
 
 	/* Sanity check that we allow writing into this object */
 	if (i915_gem_object_is_readonly(obj) && write) {
@@ -2360,7 +2326,6 @@ retry:
 		goto err_unpin;
 	}
 
-#ifdef __DragonFly__
 	/*
 	 * Add a pip count to avoid destruction and certain other
 	 * complex operations (such as collapses?) while unlocked.
@@ -2433,7 +2398,6 @@ have_page:
 	 *
 	 * OBJECT EXPECTED TO BE LOCKED.
 	 */
-#endif /* __DragonFly__ */
 
 	/* Mark as being mmapped into userspace for later revocation */
 	assert_rpm_wakelock_held(dev_priv);
@@ -2473,7 +2437,6 @@ err:
 		 */
 	case -ERESTARTSYS:
 	case -EINTR:
-#ifdef __DragonFly__
 		if (didref) {
 			kprintf("i915: caught bug(%d) (retry)\n", ret);
 			vm_object_pip_wakeup(vm_obj);
@@ -2486,21 +2449,18 @@ err:
 		goto retry;
 	case VM_PAGER_OK:
 		break;
-#endif
 	default:
 		WARN_ONCE(ret, "unhandled error in i915_gem_fault: %i\n", ret);
 		ret = VM_PAGER_ERROR;
 		break;
 	}
 
-#ifdef __DragonFly__
 	if (didref)
 		vm_object_pip_wakeup(vm_obj);
 	else
 		kprintf("i915: caught bug(%d)\n", ret);
 
 	up_read(&area->vm_mm->mmap_sem);
-#endif
 
 	return ret;
 }
@@ -2904,10 +2864,8 @@ rebuild_st:
 	 *
 	 * Fail silently without starting the shrinker
 	 */
-#ifdef __DragonFly__
 	mapping = obj->base.filp;
 	VM_OBJECT_LOCK(mapping);
-#endif
 	noreclaim = mapping_gfp_constraint(mapping,
 					   ~(__GFP_IO | __GFP_RECLAIM));
 	noreclaim |= __GFP_NORETRY | __GFP_NOWARN;
@@ -2987,9 +2945,7 @@ rebuild_st:
 		sg_page_sizes |= sg->length;
 		sg_mark_end(sg);
 	}
-#ifdef __DragonFly__
 	VM_OBJECT_UNLOCK(mapping);
-#endif
 
 	/* Trim unused sg entries to avoid wasting memory. */
 	i915_sg_trim(st);
@@ -3028,9 +2984,7 @@ err_sg:
 err_pages:
 	for_each_sgt_page(page, sgt_iter, st)
 		put_page(page);
-#ifdef __DragonFly__
 	VM_OBJECT_UNLOCK(mapping);
-#endif
 	sg_free_table(st);
 	kfree(st);
 
@@ -3264,9 +3218,6 @@ static int
 i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 			   const struct drm_i915_gem_pwrite *arg)
 {
-#ifndef __DragonFly__
-	struct address_space *mapping = obj->base.filp->f_mapping;
-#endif
 	char __user *user_data = u64_to_user_ptr(arg->data_ptr);
 	u64 remain, offset;
 	unsigned int pg;
@@ -3306,11 +3257,7 @@ i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 		if (len > remain)
 			len = remain;
 
-#ifndef __DragonFly__
-		err = pagecache_write_begin(obj->base.filp, mapping,
-#else
 		err = pagecache_write_begin(obj->base.filp, NULL,
-#endif
 					    offset, len, 0,
 					    &page, &data);
 		if (err < 0)
@@ -3320,11 +3267,7 @@ i915_gem_object_pwrite_gtt(struct drm_i915_gem_object *obj,
 		unwritten = copy_from_user(vaddr + pg, user_data, len);
 		kunmap(page);
 
-#ifndef __DragonFly__
-		err = pagecache_write_end(obj->base.filp, mapping,
-#else
 		err = pagecache_write_end(obj->base.filp, NULL,
-#endif
 					  offset, len, len - unwritten,
 					  page, data);
 		if (err < 0)
@@ -5127,30 +5070,9 @@ static int i915_gem_object_create_shmem(struct drm_device *dev,
 					struct drm_gem_object *obj,
 					size_t size)
 {
-#ifndef __DragonFly__
-	struct drm_i915_private *i915 = to_i915(dev);
-	unsigned long flags = VM_NORESERVE;
-	struct file *filp;
-#endif
 
-#ifndef __DragonFly__
-	drm_gem_private_object_init(dev, obj, size);
-#else
 	drm_gem_object_init(dev, obj, size);
-#endif
 
-#ifndef __DragonFly__
-	if (i915->mm.gemfs)
-		filp = shmem_file_setup_with_mnt(i915->mm.gemfs, "i915", size,
-						 flags);
-	else
-		filp = shmem_file_setup("i915", size, flags);
-
-	if (IS_ERR(filp))
-		return PTR_ERR(filp);
-
-	obj->filp = filp;
-#endif
 
 	return 0;
 }
@@ -6378,7 +6300,6 @@ void i915_gem_release(struct drm_device *dev, struct drm_file *file)
 	lockmgr(&file_priv->mm.lock, LK_RELEASE);
 }
 
-#ifdef __DragonFly__
 int
 i915_gem_pager_ctor(void *handle, vm_ooffset_t size, vm_prot_t prot,
     vm_ooffset_t foff, struct ucred *cred, u_short *color)
@@ -6399,7 +6320,6 @@ i915_gem_pager_dtor(void *handle)
 	drm_gem_object_unreference(obj);
 	mutex_unlock(&dev->struct_mutex);
 }
-#endif
 
 int i915_gem_open(struct drm_i915_private *i915, struct drm_file *file)
 {
@@ -6495,11 +6415,7 @@ i915_gem_object_create_from_data(struct drm_i915_private *dev_priv,
 		memcpy(vaddr, data, len);
 		kunmap(page);
 
-#ifndef __DragonFly__
-		err = pagecache_write_end(file, file->f_mapping,
-#else
 		err = pagecache_write_end(file, NULL,
-#endif
 					  offset, len, len,
 					  page, pgdata);
 		if (err < 0)

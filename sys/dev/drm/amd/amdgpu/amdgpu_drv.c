@@ -134,7 +134,7 @@ uint amdgpu_dc_feature_mask = 0;
 struct amdgpu_mgpu_info mgpu_info = {
 	.mutex = __MUTEX_INITIALIZER(mgpu_info.mutex),
 };
-#elif defined(__DragonFly__)
+#else
 struct amdgpu_mgpu_info mgpu_info;
 /*static struct lock mgpu_info_mutex;*/
 LOCK_SYSINIT(mgpu_info_mutex, &mgpu_info.mutex, "amgpum", LK_CANRECURSE);
@@ -524,18 +524,8 @@ module_param_named(si_support, amdgpu_si_support, int, 0444);
  */
 #ifdef CONFIG_DRM_AMDGPU_CIK
 
-#ifdef __DragonFly__
 int amdgpu_cik_support = 0;
 TUNABLE_INT("drm.amdgpu.cik_support", &amdgpu_cik_support);
-#else
-#if defined(CONFIG_DRM_RADEON) || defined(CONFIG_DRM_RADEON_MODULE)
-int amdgpu_cik_support = 0;
-MODULE_PARM_DESC(cik_support, "CIK support (1 = enabled, 0 = disabled (default))");
-#else	/* !__DragonFly__ */
-int amdgpu_cik_support = 1;
-MODULE_PARM_DESC(cik_support, "CIK support (1 = enabled (default), 0 = disabled)");
-#endif
-#endif	/* __DragonFly__ */
 
 module_param_named(cik_support, amdgpu_cik_support, int, 0444);
 #endif	/* CONFIG_DRM_AMDGPU_CIK */
@@ -975,7 +965,6 @@ err_free:
 	return ret;
 }
 
-#ifdef __DragonFly__
 static const struct pci_device_id *
 amdgpu_pci_device_id_dfly(device_t kdev)
 {
@@ -1068,7 +1057,6 @@ amdgpu_attach_dfly(device_t kdev)
 
 	return error;
 }
-#endif
 
 #if 0
 static void
@@ -1409,7 +1397,6 @@ MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL and additional rights");
 
-#ifdef __DragonFly__
 static device_method_t amdgpu_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		amdgpu_pci_probe_dfly),
@@ -1433,5 +1420,4 @@ DRIVER_MODULE_ORDERED(amdgpu, vgapci, amdgpu_driver, &drm_devclass, NULL, NULL, 
 MODULE_DEPEND(amdgpu, drm, 1, 1, 1);
 #ifdef CONFIG_ACPI
 MODULE_DEPEND(amdgpu, acpi, 1, 1, 1);
-#endif
 #endif

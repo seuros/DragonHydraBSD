@@ -265,7 +265,6 @@ void amdgpu_atombios_encoder_init_backlight(struct amdgpu_encoder *amdgpu_encode
 
 	DRM_INFO("amdgpu atom DIG backlight initialized\n");
 
-#ifdef __DragonFly__
 	dig->backlight_level = backlight_level;
 
 	adev->mode_info.bl_encoder = amdgpu_encoder;
@@ -282,7 +281,6 @@ void amdgpu_atombios_encoder_init_backlight(struct amdgpu_encoder *amdgpu_encode
 			amdgpu_encoder, sizeof(int),
 			sysctl_backlight_handler,
 			"I", "Backlight level");
-#endif
 
 	return;
 

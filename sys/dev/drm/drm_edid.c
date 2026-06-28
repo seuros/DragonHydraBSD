@@ -28,9 +28,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifdef __DragonFly__
 #include "opt_drm.h"
-#endif
 
 #include <linux/kernel.h>
 #include <linux/slab.h>

@@ -179,11 +179,7 @@ int radeon_connector_table = 0;
 int radeon_tv = 1;
 int radeon_audio = -1;
 int radeon_disp_priority = 0;
-#ifdef __DragonFly__
 int radeon_hw_i2c = 1;
-#else
-int radeon_hw_i2c = 0;
-#endif
 int radeon_pcie_gen2 = -1;
 int radeon_msi = -1;
 int radeon_lockup_timeout = 10000;
@@ -335,15 +331,9 @@ MODULE_PARM_DESC(si_support, "SI support (1 = enabled (default), 0 = disabled)")
 module_param_named(si_support, radeon_si_support, int, 0444);
 
 #ifdef CONFIG_DRM_AMDGPU_CIK
-#ifdef __DragonFly__
 int radeon_cik_support = 1;
 TUNABLE_INT("drm.radeon.cik_support", &radeon_cik_support);
 MODULE_PARM_DESC(cik_support, "CIK support (1 = enabled (default), 0 = disabled)");
-#else	 /* !__DragonFly__ */
-int radeon_cik_support = 0;
-MODULE_PARM_DESC(cik_support, "CIK support (1 = enabled, 0 = disabled (default))");
-module_param_named(cik_support, radeon_cik_support, int, 0444);
-#endif	/* __DragonFly__ */
 #endif	/* CONFIG_DRM_AMDGPU_CIK */
 
 static struct pci_device_id pciidlist[] = {

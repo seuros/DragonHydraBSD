@@ -244,7 +244,6 @@ static int intelfb_create(struct drm_fb_helper *helper,
 
 	ifbdev->helper.fb = fb;
 
-#ifdef __DragonFly__
 	vga_dev = device_get_parent(dev->dev->bsddev);
 	info->width = sizes->fb_width;
 	info->height = sizes->fb_height;
@@ -254,18 +253,6 @@ static int intelfb_create(struct drm_fb_helper *helper,
 	info->is_vga_boot_display = vga_pci_is_boot_display(vga_dev);
 	info->fbops = intelfb_ops;
 
-#else
-	strcpy(info->fix.id, "inteldrmfb");
-
-	info->fbops = &intelfb_ops;
-
-	/* setup aperture base/size for vesafb takeover */
-	info->apertures->ranges[0].base = dev->mode_config.fb_base;
-	info->apertures->ranges[0].size = ggtt->mappable_end;
-
-	info->fix.smem_start = dev->mode_config.fb_base + i915_ggtt_offset(vma);
-	info->fix.smem_len = vma->node.size;
-#endif
 
 	vaddr = i915_vma_pin_iomap(vma);
 	if (IS_ERR(vaddr)) {
@@ -273,25 +260,7 @@ static int intelfb_create(struct drm_fb_helper *helper,
 		ret = PTR_ERR(vaddr);
 		goto out_unpin;
 	}
-#ifdef __DragonFly__
 	info->vaddr = (vm_offset_t)vaddr;
-#else
-	info->screen_base = vaddr;
-	info->screen_size = vma->node.size;
-
-	/* This driver doesn't need a VT switch to restore the mode on resume */
-	info->skip_vt_switch = true;
-
-	drm_fb_helper_fill_fix(info, fb->pitches[0], fb->format->depth);
-	drm_fb_helper_fill_var(info, &ifbdev->helper, sizes->fb_width, sizes->fb_height);
-
-	/* If the object is shmemfs backed, it will have given us zeroed pages.
-	 * If the object is stolen however, it will be full of whatever
-	 * garbage was left in there.
-	 */
-	if (intel_fb_obj(fb)->stolen && !prealloc)
-		memset_io(info->screen_base, 0, info->screen_size);
-#endif
 
 	/* Use default scratch pixmap (info->pixmap.flags = FB_PIXMAP_SYSTEM) */
 
@@ -885,13 +854,11 @@ void intel_fbdev_restore_mode(struct drm_device *dev)
 	if (!ifbdev->vma)
 		return;
 
-#ifdef __DragonFly__
 	/* XXX: avoid dead-locking the Xorg on exit */
 	if (mutex_is_locked(&dev->mode_config.mutex)) {
 		DRM_ERROR("fubar while trying to restore kms_console\n");
 		return; /* drm_modeset_unlock_all(dev) ? */
 	}
-#endif
 
 	if (drm_fb_helper_restore_fbdev_mode_unlocked(&ifbdev->helper) == 0)
 		intel_fbdev_invalidate(ifbdev);

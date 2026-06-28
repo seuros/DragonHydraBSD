@@ -25,9 +25,7 @@
 
 #include "amdgpu_ring.h"
 
-#ifdef __DragonFly__
 #include <linux/idr.h>
-#endif
 
 struct drm_device;
 struct drm_file;

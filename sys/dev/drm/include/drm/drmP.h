@@ -85,13 +85,11 @@
 #include <drm/drm_irq.h>
 #include <drm/drm_device.h>
 
-#ifdef __DragonFly__
 #include <sys/conf.h>
 #include <sys/sysctl.h>
 
 #include <vm/vm_extern.h>
 #include <vm/vm_pager.h>
-#endif
 
 struct module;
 
@@ -131,7 +129,6 @@ vm_page_t vm_phys_fictitious_to_vm_page(vm_paddr_t pa);
 #define DRM_SCANOUTPOS_IN_VBLANK    (1 << 1)
 #define DRM_SCANOUTPOS_ACCURATE     (1 << 2)
 
-#ifdef __DragonFly__
 struct drm_sysctl_info {
 	struct sysctl_ctx_list ctx;
 	char   name[2];
@@ -139,7 +136,6 @@ struct drm_sysctl_info {
 
 /* Length for the array of resource pointers for drm_get_resource_*. */
 #define DRM_MAX_PCI_RESOURCE	6
-#endif
 
 #define DRM_SWITCH_POWER_ON 0
 #define DRM_SWITCH_POWER_OFF 1
@@ -150,7 +146,6 @@ struct drm_sysctl_info {
 /** \name Internal function definitions */
 /*@{*/
 
-#ifdef __DragonFly__
 int    drm_create_cdevs(device_t kdev);
 
 d_kqfilter_t drm_kqfilter;
@@ -168,7 +163,6 @@ int drm_add_busid_modesetting(struct drm_device *dev,
 void drm_init_pdev(device_t dev, struct pci_dev **pdev);
 void drm_fini_pdev(struct pci_dev **pdev);
 void drm_print_pdev(struct pci_dev *pdev);
-#endif
 
 /* returns true if currently okay to sleep */
 static inline bool drm_can_sleep(void)
@@ -178,7 +172,6 @@ static inline bool drm_can_sleep(void)
 	return true;
 }
 
-#ifdef __DragonFly__
 struct drm_softc {
 	void *drm_driver_data;
 };
@@ -201,6 +194,5 @@ static __inline__ int drm_pci_device_is_agp(struct drm_device *dev)
 {
 	return (pci_find_extcap(dev->pdev->dev.bsddev, PCIY_AGP, NULL) == 0);
 }
-#endif
 
 #endif

@@ -2387,9 +2387,7 @@ kprintf("amdgpu_device_init: start\n");
 		adev->usec_timeout *= 2;
 	adev->gmc.gart_size = 512 * 1024 * 1024;
 	adev->accel_working = false;
-#ifdef __DragonFly__
 	adev->fictitious_range_registered = false;
-#endif
 	adev->num_rings = 0;
 	adev->mman.buffer_funcs = NULL;
 	adev->mman.buffer_funcs_ring = NULL;
@@ -2641,7 +2639,6 @@ kprintf("amdgpu_device_init: 9\n");
 		goto failed;
 	}
 
-#ifdef __DragonFly__
 	DRM_INFO("%s: Taking over the fictitious range 0x%lx-0x%llx\n", __func__,
 	    (uintmax_t)adev->gmc.aper_base,
 	    (uintmax_t)adev->gmc.aper_base + adev->gmc.visible_vram_size);
@@ -2656,7 +2653,6 @@ kprintf("amdgpu_device_init: 9\n");
 		return (-r);
 	}
 	adev->fictitious_range_registered = true;
-#endif
 
 kprintf("amdgpu_device_init: 10\n");
 	amdgpu_fbdev_init(adev);
@@ -2748,9 +2744,7 @@ void amdgpu_device_fini(struct amdgpu_device *adev)
 		adev->firmware.gpu_info_fw = NULL;
 	}
 	adev->accel_working = false;
-#ifdef __DragonFly__
 	adev->fictitious_range_registered = false;
-#endif
 	cancel_delayed_work_sync(&adev->late_init_work);
 	/* free i2c buses */
 	if (!amdgpu_device_has_dc_support(adev))

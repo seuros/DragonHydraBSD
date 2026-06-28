@@ -27,9 +27,7 @@
  *
  */
 
-#ifdef __DragonFly__
 #include "opt_drm.h"	/* for VGA_SWITCHEROO */
-#endif
 
 #include <linux/acpi.h>
 #include <linux/device.h>
@@ -724,7 +722,6 @@ static int i915_load_modeset_init(struct drm_device *dev)
 	/* Only enable hotplug handling once the fbdev is fully set up. */
 	intel_hpd_init(dev_priv);
 
-#ifdef __DragonFly__
 	/*
 	 * If we are dealing with dual GPU machines the vga_switcheroo module
 	 * has been loaded. Machines with dual GPUs have an integrated graphics
@@ -744,7 +741,6 @@ static int i915_load_modeset_init(struct drm_device *dev)
 			DRM_INFO("could not switch gmux to IGD\n");
 		}
 	}
-#endif
 
 	return 0;
 
@@ -769,37 +765,10 @@ out:
 	return ret;
 }
 
-#ifdef __DragonFly__
 static int i915_kick_out_firmware_fb(struct drm_i915_private *dev_priv)
 {
 	return 0;
 }
-#else
-static int i915_kick_out_firmware_fb(struct drm_i915_private *dev_priv)
-{
-	struct apertures_struct *ap;
-	struct pci_dev *pdev = dev_priv->drm.pdev;
-	struct i915_ggtt *ggtt = &dev_priv->ggtt;
-	bool primary;
-	int ret;
-
-	ap = alloc_apertures(1);
-	if (!ap)
-		return -ENOMEM;
-
-	ap->ranges[0].base = ggtt->gmadr.start;
-	ap->ranges[0].size = ggtt->mappable_end;
-
-	primary =
-		pdev->resource[PCI_ROM_RESOURCE].flags & IORESOURCE_ROM_SHADOW;
-
-	ret = drm_fb_helper_remove_conflicting_framebuffers(ap, "inteldrmfb", primary);
-
-	kfree(ap);
-
-	return ret;
-}
-#endif
 
 #if !defined(CONFIG_VGA_CONSOLE)
 static int i915_kick_out_vgacon(struct drm_i915_private *dev_priv)
@@ -3308,9 +3277,7 @@ static struct drm_driver driver = {
 	.major = DRIVER_MAJOR,
 	.minor = DRIVER_MINOR,
 	.patchlevel = DRIVER_PATCHLEVEL,
-#ifdef __DragonFly__
 	.sysctl_init = i915_sysctl_init,
-#endif
 };
 
 #if IS_ENABLED(CONFIG_DRM_I915_SELFTEST)

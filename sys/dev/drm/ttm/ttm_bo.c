@@ -170,10 +170,8 @@ void ttm_bo_add_to_lru(struct ttm_buffer_object *bo)
 
 	if (!(bo->mem.placement & TTM_PL_FLAG_NO_EVICT)) {
 
-#ifdef __DragonFly__
 		if (WARN_ON(!list_empty(&bo->lru)))
 			return;
-#endif
 
 		man = &bdev->man[bo->mem.mem_type];
 		list_add_tail(&bo->lru, &man->lru[bo->priority]);
@@ -1680,7 +1678,6 @@ bool ttm_mem_reg_is_pci(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem)
 	return true;
 }
 
-#ifdef __DragonFly__
 
 /*
  * XXX DRAGONFLY - device_mapping not yet implemented so
@@ -1689,7 +1686,6 @@ bool ttm_mem_reg_is_pci(struct ttm_bo_device *bdev, struct ttm_mem_reg *mem)
 */
 void ttm_bo_release_mmap(struct ttm_buffer_object *bo);
 
-#endif
 
 void ttm_bo_unmap_virtual_locked(struct ttm_buffer_object *bo)
 {

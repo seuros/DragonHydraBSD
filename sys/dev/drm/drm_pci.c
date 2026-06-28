@@ -59,7 +59,6 @@ drm_pci_busdma_callback(void *arg, bus_dma_segment_t *segs, int nsegs, int error
  */
 drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t align)
 {
-#ifdef __DragonFly__
 	drm_dma_handle_t *dmah;
 	int ret;
 
@@ -103,43 +102,6 @@ drm_dma_handle_t *drm_pci_alloc(struct drm_device * dev, size_t size, size_t ali
 		return NULL;
 	}
 	return dmah;
-#else
-	drm_dma_handle_t *dmah;
-	unsigned long addr;
-	size_t sz;
-
-	/* pci_alloc_consistent only guarantees alignment to the smallest
-	 * PAGE_SIZE order which is greater than or equal to the requested size.
-	 * Return NULL here for now to make sure nobody tries for larger alignment
-	 */
-	if (align > size)
-		return NULL;
-
-	dmah = kmalloc(sizeof(drm_dma_handle_t), M_DRM, GFP_KERNEL);
-	if (!dmah)
-		return NULL;
-
-	dmah->size = size;
-	dmah->vaddr = dma_alloc_coherent(&dev->pdev->dev, size, &dmah->busaddr, GFP_KERNEL);
-
-	if (dmah->vaddr == NULL) {
-		kfree(dmah);
-		return NULL;
-	}
-
-	memset(dmah->vaddr, 0, size);
-
-	/* XXX - Is virt_to_page() legal for consistent mem? */
-	/* Reserve */
-	for (addr = (unsigned long)dmah->vaddr, sz = size;
-	     sz > 0; addr += PAGE_SIZE, sz -= PAGE_SIZE) {
-#if 0
-		SetPageReserved(virt_to_page((void *)addr));
-#endif
-	}
-
-	return dmah;
-#endif
 }
 
 EXPORT_SYMBOL(drm_pci_alloc);
@@ -151,30 +113,12 @@ EXPORT_SYMBOL(drm_pci_alloc);
  */
 void __drm_legacy_pci_free(struct drm_device * dev, drm_dma_handle_t * dmah)
 {
-#ifdef __DragonFly__
 	if (dmah == NULL)
 		return;
 
 	bus_dmamap_unload(dmah->tag, dmah->map);
 	bus_dmamem_free(dmah->tag, dmah->vaddr, dmah->map);
 	bus_dma_tag_destroy(dmah->tag);
-#else
-	unsigned long addr;
-	size_t sz;
-
-	if (dmah->vaddr) {
-		/* XXX - Is virt_to_page() legal for consistent mem? */
-		/* Unreserve */
-		for (addr = (unsigned long)dmah->vaddr, sz = dmah->size;
-		     sz > 0; addr += PAGE_SIZE, sz -= PAGE_SIZE) {
-#if 0
-			ClearPageReserved(virt_to_page((void *)addr));
-#endif
-		}
-		dma_free_coherent(&dev->pdev->dev, dmah->size, dmah->vaddr,
-				  dmah->busaddr);
-	}
-#endif
 }
 
 /**
@@ -271,7 +215,6 @@ int drm_irq_by_busid(struct drm_device *dev, void *data,
 	return drm_pci_irq_by_busid(dev, p);
 }
 
-#ifdef __DragonFly__
 int
 drm_getpciinfo(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
@@ -289,7 +232,6 @@ drm_getpciinfo(struct drm_device *dev, void *data, struct drm_file *file_priv)
 
 	return 0;
 }
-#endif
 
 /**
  * drm_get_pci_dev - Register a PCI device with the DRM subsystem
