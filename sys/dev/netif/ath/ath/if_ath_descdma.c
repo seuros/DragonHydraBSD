@@ -68,12 +68,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/module.h>
 #include <sys/ktr.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <sys/smp.h>	/* for mp_ncpus */
-#include <machine/bus.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -184,19 +179,10 @@ ath_descdma_alloc_desc(struct ath_softc *sc,
 		       PAGE_SIZE, 0,		/* alignment, bounds */
 		       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 		       BUS_SPACE_MAXADDR,	/* highaddr */
-#if defined(__DragonFly__)
-#else
-		       NULL, NULL,		/* filter, filterarg */
-#endif
 		       dd->dd_desc_len,		/* maxsize */
 		       1,			/* nsegments */
 		       dd->dd_desc_len,		/* maxsegsize */
 		       0,			/* flags */
-#if defined(__DragonFly__)
-#else
-		       NULL,			/* lockfunc */
-		       NULL,			/* lockarg */
-#endif
 		       &dd->dd_dmat);
 	if (error != 0) {
 		device_printf(sc->sc_dev,

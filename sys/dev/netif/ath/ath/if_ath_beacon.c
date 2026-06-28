@@ -68,12 +68,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/module.h>
 #include <sys/ktr.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <sys/smp.h>   /* for mp_ncpus */
-#include <machine/bus.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -208,15 +203,9 @@ ath_beacon_alloc(struct ath_softc *sc, struct ieee80211_node *ni)
 		sc->sc_stats.ast_be_nombuf++;
 		return ENOMEM;
 	}
-#if defined(__DragonFly__)
 	error = bus_dmamap_load_mbuf_segment(sc->sc_dmat, bf->bf_dmamap, m,
 				     bf->bf_segs, 1, &bf->bf_nseg,
 				     BUS_DMA_NOWAIT);
-#else
-	error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
-				     bf->bf_segs, &bf->bf_nseg,
-				     BUS_DMA_NOWAIT);
-#endif
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "%s: cannot map mbuf, bus_dmamap_load_mbuf_sg returns %d\n",
@@ -725,16 +714,10 @@ ath_beacon_generate(struct ath_softc *sc, struct ieee80211vap *vap)
 	if (ieee80211_beacon_update(bf->bf_node, m, nmcastq)) {
 		/* XXX too conservative? */
 		bus_dmamap_unload(sc->sc_dmat, bf->bf_dmamap);
-#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
 					     bf->bf_dmamap, m,
 					     bf->bf_segs, 1, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
-#else
-		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
-					     bf->bf_segs, &bf->bf_nseg,
-					     BUS_DMA_NOWAIT);
-#endif
 		if (error != 0) {
 			if_printf(vap->iv_ifp,
 			    "%s: bus_dmamap_load_mbuf_sg failed, error %u\n",
@@ -848,16 +831,10 @@ ath_beacon_start_adhoc(struct ath_softc *sc, struct ieee80211vap *vap)
 	if (ieee80211_beacon_update(bf->bf_node, m, 0)) {
 		/* XXX too conservative? */
 		bus_dmamap_unload(sc->sc_dmat, bf->bf_dmamap);
-#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
 					     bf->bf_dmamap, m,
 					     bf->bf_segs, 1, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
-#else
-		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat, bf->bf_dmamap, m,
-					     bf->bf_segs, &bf->bf_nseg,
-					     BUS_DMA_NOWAIT);
-#endif
 		if (error != 0) {
 			if_printf(vap->iv_ifp,
 			    "%s: bus_dmamap_load_mbuf_sg failed, error %u\n",

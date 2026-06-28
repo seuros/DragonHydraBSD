@@ -45,10 +45,6 @@
 #include <sys/errno.h>
 #include <sys/firmware.h>
 #include <sys/lock.h>
-#if !defined(__DragonFly__)
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/socket.h>
@@ -63,57 +59,27 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 
-#if defined(__DragonFly__)
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 #include <dev/netif/bwn/siba/siba_ids.h>
 #include <dev/netif/bwn/siba/sibareg.h>
 #include <dev/netif/bwn/siba/sibavar.h>
-#else
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
-#include <dev/siba/siba_ids.h>
-#include <dev/siba/sibareg.h>
-#include <dev/siba/sibavar.h>
-#endif
 
-#if defined(__DragonFly__)
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
 #include <netproto/802_11/ieee80211_phy.h>
 #include <netproto/802_11/ieee80211_ratectl.h>
-#else
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_radiotap.h>
-#include <net80211/ieee80211_regdomain.h>
-#include <net80211/ieee80211_phy.h>
-#include <net80211/ieee80211_ratectl.h>
-#endif
 
-#if defined(__DragonFly__)
 #include "if_bwnreg.h"
 #include "if_bwnvar.h"
-#else
-#include <dev/bwn/if_bwnreg.h>
-#include <dev/bwn/if_bwnvar.h>
-#endif
 
-#if defined(__DragonFly__)
 #include "if_bwn_debug.h"
 #include "if_bwn_misc.h"
 #include "if_bwn_util.h"
 #include "if_bwn_phy_common.h"
 #include "if_bwn_phy_g.h"
 #include "if_bwn_phy_lp.h"
-#else
-#include <dev/bwn/if_bwn_debug.h>
-#include <dev/bwn/if_bwn_misc.h>
-#include <dev/bwn/if_bwn_util.h>
-#include <dev/bwn/if_bwn_phy_common.h>
-#include <dev/bwn/if_bwn_phy_g.h>
-#include <dev/bwn/if_bwn_phy_lp.h>
-#endif
 
 static SYSCTL_NODE(_hw, OID_AUTO, bwn, CTLFLAG_RD, 0,
     "Broadcom driver parameters");
@@ -137,13 +103,8 @@ SYSCTL_INT(_hw_bwn, OID_AUTO, bluetooth, CTLFLAG_RW, &bwn_bluetooth, 0,
 static int	bwn_hwpctl = 0;
 SYSCTL_INT(_hw_bwn, OID_AUTO, hwpctl, CTLFLAG_RW, &bwn_hwpctl, 0,
     "uses H/W power control");
-#if defined(__DragonFly__)
 static int	bwn_msi_enable = 1;
 TUNABLE_INT("hw.bwn.msi.enable", &bwn_msi_enable);
-#else
-static int	bwn_msi_disable = 0;		/* MSI disabled  */
-TUNABLE_INT("hw.bwn.msi_disable", &bwn_msi_disable);
-#endif
 static int	bwn_usedma = 1;
 SYSCTL_INT(_hw_bwn, OID_AUTO, usedma, CTLFLAG_RD, &bwn_usedma, 0,
     "uses DMA");
@@ -331,11 +292,7 @@ static int	bwn_switch_band(struct bwn_softc *,
 static void	bwn_phy_reset(struct bwn_mac *);
 static int	bwn_newstate(struct ieee80211vap *, enum ieee80211_state, int);
 static void	bwn_set_pretbtt(struct bwn_mac *);
-#if defined(__DragonFly__)
 static void	bwn_intr(void *);
-#else
-static int	bwn_intr(void *);
-#endif
 static void	bwn_intrtask(void *, int);
 static void	bwn_restart(struct bwn_mac *, const char *);
 static void	bwn_intr_ucode_debug(struct bwn_mac *);
@@ -393,17 +350,6 @@ static void	bwn_rf_turnon(struct bwn_mac *);
 static void	bwn_rf_turnoff(struct bwn_mac *);
 static void	bwn_sysctl_node(struct bwn_softc *);
 
-#if !defined(__DragonFly__)
-static struct resource_spec bwn_res_spec_legacy[] = {
-	{ SYS_RES_IRQ,		0,		RF_ACTIVE | RF_SHAREABLE },
-	{ -1,			0,		0 }
-};
-
-static struct resource_spec bwn_res_spec_msi[] = {
-	{ SYS_RES_IRQ,		1,		RF_ACTIVE },
-	{ -1,			0,		0 }
-};
-#endif
 
 static const struct bwn_channelinfo bwn_chantable_bg = {
 	.channels = {
@@ -555,12 +501,8 @@ bwn_attach(device_t dev)
 {
 	struct bwn_mac *mac;
 	struct bwn_softc *sc = device_get_softc(dev);
-#if defined(__DragonFly__)
 	u_int irq_flags;
 	int error;
-#else
-	int error, i, msic, reg;
-#endif
 
 	sc->sc_dev = dev;
 #ifdef BWN_DEBUG
@@ -613,7 +555,6 @@ bwn_attach(device_t dev)
 	/*
 	 * setup PCI resources and interrupt.
 	 */
-#if defined(__DragonFly__)
 	/* Allocate IRQ resource. */
 	sc->bwn_irq_rid = 0;
 	sc->bwn_irq_type = pci_alloc_1intr(sc->sc_dev, bwn_msi_enable,
@@ -629,49 +570,6 @@ bwn_attach(device_t dev)
 		device_printf(sc->sc_dev, "Cannot set up interrupt\n");
 		goto fail1;
 	}
-#else
-	if (pci_find_cap(dev, PCIY_EXPRESS, &reg) == 0) {
-		msic = pci_msi_count(dev);
-		if (bootverbose)
-			device_printf(sc->sc_dev, "MSI count : %d\n", msic);
-	} else
-		msic = 0;
-
-	mac->mac_intr_spec = bwn_res_spec_legacy;
-	if (msic == BWN_MSI_MESSAGES && bwn_msi_disable == 0) {
-		if (pci_alloc_msi(dev, &msic) == 0) {
-			device_printf(sc->sc_dev,
-			    "Using %d MSI messages\n", msic);
-			mac->mac_intr_spec = bwn_res_spec_msi;
-			mac->mac_msi = 1;
-		}
-	}
-
-	error = bus_alloc_resources(dev, mac->mac_intr_spec,
-	    mac->mac_res_irq);
-	if (error) {
-		device_printf(sc->sc_dev,
-		    "couldn't allocate IRQ resources (%d)\n", error);
-		goto fail1;
-	}
-
-	if (mac->mac_msi == 0)
-		error = bus_setup_intr(dev, mac->mac_res_irq[0],
-		    INTR_TYPE_NET | INTR_MPSAFE, bwn_intr, NULL, mac,
-		    &mac->mac_intrhand[0]);
-	else {
-		for (i = 0; i < BWN_MSI_MESSAGES; i++) {
-			error = bus_setup_intr(dev, mac->mac_res_irq[i],
-			    INTR_TYPE_NET | INTR_MPSAFE, bwn_intr, NULL, mac,
-			    &mac->mac_intrhand[i]);
-			if (error != 0) {
-				device_printf(sc->sc_dev,
-				    "couldn't setup interrupt (%d)\n", error);
-				break;
-			}
-		}
-	}
-#endif
 
 	TAILQ_INSERT_TAIL(&sc->sc_maclist, mac, mac_list);
 
@@ -683,13 +581,8 @@ bwn_attach(device_t dev)
 
 	return (0);
 fail1:
-#if defined(__DragonFly__)
 	if (sc->bwn_irq_type == PCI_INTR_TYPE_MSI)
 		pci_release_msi(dev);
-#else
-	if (msic == BWN_MSI_MESSAGES && bwn_msi_disable == 0)
-		pci_release_msi(dev);
-#endif
 fail0:
 	kfree(mac, M_DEVBUF);
 	return (error);
@@ -782,9 +675,6 @@ bwn_detach(device_t dev)
 	struct bwn_softc *sc = device_get_softc(dev);
 	struct bwn_mac *mac = sc->sc_curmac;
 	struct ieee80211com *ic = &sc->sc_ic;
-#if !defined(__DragonFly__)
-	int i;
-#endif
 
 	sc->sc_flags |= BWN_FLAG_INVALID;
 
@@ -805,7 +695,6 @@ bwn_detach(device_t dev)
 	taskqueue_drain(sc->sc_tq, &mac->mac_intrtask);
 	taskqueue_free(sc->sc_tq);
 
-#if defined(__DragonFly__)
 	if (sc->bwn_intr)
 		bus_teardown_intr(dev, sc->bwn_irq, sc->bwn_intr);
 	if (sc->bwn_irq != NULL) {
@@ -815,18 +704,6 @@ bwn_detach(device_t dev)
 
 	if (sc->bwn_irq_type == PCI_INTR_TYPE_MSI)
 		pci_release_msi(dev);
-#else
-	for (i = 0; i < BWN_MSI_MESSAGES; i++) {
-		if (mac->mac_intrhand[i] != NULL) {
-			bus_teardown_intr(dev, mac->mac_res_irq[i],
-			    mac->mac_intrhand[i]);
-			mac->mac_intrhand[i] = NULL;
-		}
-	}
-	bus_release_resources(dev, mac->mac_intr_spec, mac->mac_res_irq);
-	if (mac->mac_msi != 0)
-		pci_release_msi(dev);
-#endif
 	mbufq_drain(&sc->sc_snd);
 	BWN_LOCK_DESTROY(sc);
 	return (0);
@@ -838,27 +715,14 @@ bwn_attach_pre(struct bwn_softc *sc)
 
 	BWN_LOCK_INIT(sc);
 	TAILQ_INIT(&sc->sc_maclist);
-#if defined(__DragonFly__)
 	callout_init_lk(&sc->sc_rfswitch_ch, &sc->sc_lk);
 	callout_init_lk(&sc->sc_task_ch, &sc->sc_lk);
 	callout_init_lk(&sc->sc_watchdog_ch, &sc->sc_lk);
-#else
-	callout_init_mtx(&sc->sc_rfswitch_ch, &sc->sc_mtx, 0);
-	callout_init_mtx(&sc->sc_task_ch, &sc->sc_mtx, 0);
-	callout_init_mtx(&sc->sc_watchdog_ch, &sc->sc_mtx, 0);
-#endif
 	mbufq_init(&sc->sc_snd, ifqmaxlen);
-#if defined(__DragonFly__)
 	sc->sc_tq = taskqueue_create("bwn_taskq", M_WAITOK,
 	    taskqueue_thread_enqueue, &sc->sc_tq);
 	taskqueue_start_threads(&sc->sc_tq, 1, TDPRI_KERN_DAEMON,
 	    -1, "%s taskq", device_get_nameunit(sc->sc_dev));
-#else
-	sc->sc_tq = taskqueue_create_fast("bwn_taskq", M_NOWAIT,
-		taskqueue_thread_enqueue, &sc->sc_tq);
-	taskqueue_start_threads(&sc->sc_tq, 1, PI_NET,
-		"%s taskq", device_get_nameunit(sc->sc_dev));
-#endif
 }
 
 static void
@@ -957,11 +821,7 @@ bwn_start(struct bwn_softc *sc)
 		if (ni == NULL) {
 			device_printf(sc->sc_dev, "unexpected NULL ni\n");
 			m_freem(m);
-#if defined(__DragonFly__)
 			++sc->sc_ic.ic_oerrors;
-#else
-			counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 			continue;
 		}
 		wh = mtod(m, struct ieee80211_frame *);
@@ -1239,17 +1099,9 @@ bwn_watchdog(void *arg)
 
 	if (sc->sc_watchdog_timer != 0 && --sc->sc_watchdog_timer == 0) {
 		device_printf(sc->sc_dev, "device timeout\n");
-#if defined(__DragonFly__)
 		++sc->sc_ic.ic_oerrors;
-#else
-		counter_u64_add(sc->sc_ic.ic_oerrors, 1);
-#endif
 	}
-#if defined(__DragonFly__)
 	callout_reset(&sc->sc_watchdog_ch, hz, bwn_watchdog, sc);
-#else
-	callout_schedule(&sc->sc_watchdog_ch, hz);
-#endif
 }
 
 static int
@@ -2810,16 +2662,10 @@ bwn_dma_ringsetup(struct bwn_mac *mac, int controller_index,
 				    1, 0,
 				    BUS_SPACE_MAXADDR,
 				    BUS_SPACE_MAXADDR,
-#if !defined(__DragonFly__)
-				    NULL, NULL,
-#endif
 				    BWN_HDRSIZE(mac),
 				    1,
 				    BUS_SPACE_MAXSIZE_32BIT,
 				    0,
-#if !defined(__DragonFly__)
-				    NULL, NULL,
-#endif
 				    &dr->dr_txring_dtag);
 		if (error) {
 			device_printf(sc->sc_dev,
@@ -3122,16 +2968,10 @@ bwn_dma_allocringmemory(struct bwn_dma_ring *dr)
 			    BWN_ALIGN, 0,
 			    BUS_SPACE_MAXADDR,
 			    BUS_SPACE_MAXADDR,
-#if !defined(__DragonFly__)
-			    NULL, NULL,
-#endif
 			    BWN_DMA_RINGMEMSIZE,
 			    1,
 			    BUS_SPACE_MAXSIZE_32BIT,
 			    0,
-#if !defined(__DragonFly__)
-			    NULL, NULL,
-#endif
 			    &dr->dr_ring_dtag);
 	if (error) {
 		device_printf(sc->sc_dev,
@@ -4879,13 +4719,8 @@ bwn_set_pretbtt(struct bwn_mac *mac)
 	BWN_WRITE_2(mac, BWN_TSF_CFP_PRETBTT, pretbtt);
 }
 
-#if defined(__DragonFly__)
 static void
 bwn_intr(void *arg)
-#else
-static int
-bwn_intr(void *arg)
-#endif
 {
 	struct bwn_mac *mac = arg;
 	struct bwn_softc *sc = mac->mac_sc;
@@ -4893,28 +4728,16 @@ bwn_intr(void *arg)
 
 	if (mac->mac_status < BWN_MAC_STATUS_STARTED ||
 	    (sc->sc_flags & BWN_FLAG_INVALID)) {
-#if defined(__DragonFly__)
 		return;
-#else
-		return (FILTER_STRAY);
-#endif
 	}
 
 	reason = BWN_READ_4(mac, BWN_INTR_REASON);
 	if (reason == 0xffffffff) {	/* shared IRQ */
-#if defined(__DragonFly__)
 		return;
-#else
-		return (FILTER_STRAY);
-#endif
 	}
 	reason &= mac->mac_intr_mask;
 	if (reason == 0) {
-#if defined(__DragonFly__)
 		return;
-#else
-		return (FILTER_HANDLED);
-#endif
 	}
 
 	mac->mac_reason[0] = BWN_READ_4(mac, BWN_DMA0_REASON) & 0x0001fc00;
@@ -4938,9 +4761,6 @@ bwn_intr(void *arg)
 	BWN_BARRIER(mac, BUS_SPACE_BARRIER_WRITE);
 
 	taskqueue_enqueue(sc->sc_tq, &mac->mac_intrtask);
-#if !defined(__DragonFly__)
-	return (FILTER_HANDLED);
-#endif
 }
 
 static void
@@ -5458,22 +5278,14 @@ bwn_dma_rxeof(struct bwn_dma_ring *dr, int *slot)
 	m = meta->mt_m;
 
 	if (bwn_dma_newbuf(dr, desc, meta, 0)) {
-#if defined(__DragonFly__)
 		++sc->sc_ic.ic_ierrors;
-#else
-		counter_u64_add(sc->sc_ic.ic_ierrors, 1);
-#endif
 		return;
 	}
 
 	rxhdr = mtod(m, struct bwn_rxhdr4 *);
 	len = le16toh(rxhdr->frame_len);
 	if (len <= 0) {
-#if defined(__DragonFly__)
 		++sc->sc_ic.ic_ierrors;
-#else
-		counter_u64_add(sc->sc_ic.ic_ierrors, 1);
-#endif
 		return;
 	}
 	if (bwn_dma_check_redzone(dr, m)) {
@@ -6956,16 +6768,10 @@ bwn_dma_attach(struct bwn_mac *mac)
 			       BWN_ALIGN, 0,		/* alignment, bounds */
 			       lowaddr,			/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-#if !defined(__DragonFly__)
-			       NULL, NULL,		/* filter, filterarg */
-#endif
 			       BUS_SPACE_MAXSIZE,	/* maxsize */
 			       BUS_SPACE_UNRESTRICTED,	/* nsegments */
 			       BUS_SPACE_MAXSIZE,	/* maxsegsize */
 			       0,			/* flags */
-#if !defined(__DragonFly__)
-			       NULL, NULL,		/* lockfunc, lockarg */
-#endif
 			       &dma->parent_dtag);
 	if (error) {
 		device_printf(sc->sc_dev, "can't create parent DMA tag\n");
@@ -6980,16 +6786,10 @@ bwn_dma_attach(struct bwn_mac *mac)
 				0,
 				BUS_SPACE_MAXADDR,
 				BUS_SPACE_MAXADDR,
-#if !defined(__DragonFly__)
-				NULL, NULL,
-#endif
 				MCLBYTES,
 				1,
 				BUS_SPACE_MAXSIZE_32BIT,
 				0,
-#if !defined(__DragonFly__)
-				NULL, NULL,
-#endif
 				&dma->rxbuf_dtag);
 	if (error) {
 		device_printf(sc->sc_dev, "can't create mbuf DMA tag\n");
@@ -7000,16 +6800,10 @@ bwn_dma_attach(struct bwn_mac *mac)
 				0,
 				BUS_SPACE_MAXADDR,
 				BUS_SPACE_MAXADDR,
-#if !defined(__DragonFly__)
-				NULL, NULL,
-#endif
 				MCLBYTES,
 				1,
 				BUS_SPACE_MAXSIZE_32BIT,
 				0,
-#if !defined(__DragonFly__)
-				NULL, NULL,
-#endif
 				&dma->txbuf_dtag);
 	if (error) {
 		device_printf(sc->sc_dev, "can't create mbuf DMA tag\n");
@@ -7202,11 +6996,7 @@ bwn_led_attach(struct bwn_mac *mac)
 		    "%dth led, act %d, lowact %d\n", i,
 		    led->led_act, led->led_flags & BWN_LED_F_ACTLOW);
 	}
-#if defined(__DragonFly__)
 	callout_init_lk(&sc->sc_led_blink_ch, &sc->sc_lk);
-#else
-	callout_init_mtx(&sc->sc_led_blink_ch, &sc->sc_mtx, 0);
-#endif
 }
 
 static __inline uint16_t
@@ -7435,11 +7225,7 @@ bwn_rfswitch(void *arg)
 		}
 	}
 
-#if defined(__DragonFly__)
 	callout_reset(&sc->sc_rfswitch_ch, hz, bwn_rfswitch, sc);
-#else
-	callout_schedule(&sc->sc_rfswitch_ch, hz);
-#endif
 }
 
 static void

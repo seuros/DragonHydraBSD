@@ -68,12 +68,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/module.h>
 #include <sys/ktr.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <sys/smp.h>
-#include <machine/bus.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_var.h>

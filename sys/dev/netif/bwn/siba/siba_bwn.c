@@ -34,9 +34,7 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_bwn.c 299409 2016-05-11 06:27:46Z adr
  * Sonics Silicon Backplane front-end for bwn(4).
  */
 
-#if defined(__DragonFly__)
 #include <opt_siba.h>
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -45,10 +43,6 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_bwn.c 299409 2016-05-11 06:27:46Z adr
 #include <sys/kernel.h>
 #include <sys/lock.h>
 #include <sys/errno.h>
-#if !defined(__DragonFly__)
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/socket.h>
@@ -57,23 +51,12 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_bwn.c 299409 2016-05-11 06:27:46Z adr
 #include <net/if_media.h>
 #include <net/if_arp.h>
 
-#if defined(__DragonFly__)
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#else
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
-#endif
 
-#if defined(__DragonFly__)
 #include "siba_ids.h"
 #include "sibareg.h"
 #include "sibavar.h"
-#else
-#include <dev/siba/siba_ids.h>
-#include <dev/siba/sibareg.h>
-#include <dev/siba/sibavar.h>
-#endif
 
 /*
  * PCI glue.
@@ -255,7 +238,6 @@ siba_bwn_resume(device_t dev)
 }
 
 /* proxying to the parent */
-#if defined(__DragonFly__)
 static struct resource *
 siba_bwn_alloc_resource(device_t dev, device_t child, int type, int *rid,
     u_long start, u_long end, u_long count, u_int flags, int cpuid)
@@ -264,16 +246,6 @@ siba_bwn_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	return (BUS_ALLOC_RESOURCE(device_get_parent(dev), dev,
 	    type, rid, start, end, count, flags, cpuid));
 }
-#else
-static struct resource *
-siba_bwn_alloc_resource(device_t dev, device_t child, int type, int *rid,
-    rman_res_t start, rman_res_t end, rman_res_t count, u_int flags)
-{
-
-	return (BUS_ALLOC_RESOURCE(device_get_parent(dev), dev,
-	    type, rid, start, end, count, flags));
-}
-#endif
 
 /* proxying to the parent */
 static int
@@ -285,7 +257,6 @@ siba_bwn_release_resource(device_t dev, device_t child, int type,
 	    rid, r));
 }
 
-#if defined(__DragonFly__)
 /* proxying to the parent */
 static int
 siba_bwn_setup_intr(device_t dev, device_t child, struct resource *irq,
@@ -296,17 +267,6 @@ siba_bwn_setup_intr(device_t dev, device_t child, struct resource *irq,
 	return (BUS_SETUP_INTR(device_get_parent(dev), dev, irq, flags,
 	    intr, arg, cookiep, serializer, NULL));
 }
-#else
-static int
-siba_bwn_setup_intr(device_t dev, device_t child, struct resource *irq,
-    int flags, driver_filter_t *filter, driver_intr_t *intr, void *arg,
-    void **cookiep)
-{
-
-	return (BUS_SETUP_INTR(device_get_parent(dev), dev, irq, flags,
-	    filter, intr, arg, cookiep));
-}
-#endif
 
 /* proxying to the parent */
 static int
@@ -317,15 +277,6 @@ siba_bwn_teardown_intr(device_t dev, device_t child, struct resource *irq,
 	return (BUS_TEARDOWN_INTR(device_get_parent(dev), dev, irq, cookie));
 }
 
-#if !defined(__DragonFly__)
-static int
-siba_bwn_find_cap(device_t dev, device_t child, int capability,
-    int *capreg)
-{
-
-	return (pci_find_cap(dev, capability, capreg));
-}
-#endif
 
 static int
 siba_bwn_find_extcap(device_t dev, device_t child, int capability,
@@ -335,24 +286,10 @@ siba_bwn_find_extcap(device_t dev, device_t child, int capability,
 	return (pci_find_extcap(dev, capability, capreg));
 }
 
-#if !defined(__DragonFly__)
-static int
-siba_bwn_find_htcap(device_t dev, device_t child, int capability,
-    int *capreg)
-{
 
-	return (pci_find_htcap(dev, capability, capreg));
-}
-#endif
-
-#if defined(__DragonFly__)
 static int
 siba_bwn_alloc_msi(device_t dev, device_t child, int *rid, int count,
     int cpuid)
-#else
-static int
-siba_bwn_alloc_msi(device_t dev, device_t child, int *count)
-#endif
 {
 	struct siba_bwn_softc *ssc;
 	int error;
@@ -360,11 +297,7 @@ siba_bwn_alloc_msi(device_t dev, device_t child, int *count)
 	ssc = device_get_softc(dev);
 	if (ssc->ssc_msi_child != NULL)
 		return (EBUSY);
-#if defined(__DragonFly__)
 	error = pci_alloc_msi(dev, rid, count, cpuid);
-#else
-	error = pci_alloc_msi(dev, count);
-#endif
 	if (error == 0)
 		ssc->ssc_msi_child = child;
 	return (error);
@@ -474,13 +407,7 @@ static device_method_t siba_bwn_methods[] = {
 	DEVMETHOD(bus_teardown_intr,    siba_bwn_teardown_intr),
 
 	/* PCI interface */
-#if !defined(__DragonFly__)
-	DEVMETHOD(pci_find_cap,		siba_bwn_find_cap),
-#endif
 	DEVMETHOD(pci_find_extcap,	siba_bwn_find_extcap),
-#if !defined(__DragonFly__)
-	DEVMETHOD(pci_find_htcap,	siba_bwn_find_htcap),
-#endif
 	DEVMETHOD(pci_alloc_msi,	siba_bwn_alloc_msi),
 	DEVMETHOD(pci_release_msi,	siba_bwn_release_msi),
 	DEVMETHOD(pci_msi_count,	siba_bwn_msi_count),

@@ -30,9 +30,7 @@
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD$");
 
-#if defined(__DragonFly__)
 #define CTLFLAG_RWTUN	CTLFLAG_RW
-#endif
 
 #include "opt_inet.h"
 #include "opt_ath.h"
@@ -55,10 +53,6 @@ __FBSDID("$FreeBSD$");
 #include <sys/taskqueue.h>
 #include <sys/caps.h>
 
-#if defined(__DragonFly__)
-#else
-#include <machine/bus.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_dl.h>

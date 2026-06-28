@@ -68,12 +68,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/module.h>
 #include <sys/ktr.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <sys/smp.h>
-#include <machine/bus.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -83,9 +78,7 @@ __FBSDID("$FreeBSD$");
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_llc.h>
-#if defined(__DragonFly__)
 #include <net/ifq_var.h>
-#endif
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_regdomain.h>

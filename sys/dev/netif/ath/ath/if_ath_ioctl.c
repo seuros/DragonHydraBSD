@@ -68,10 +68,6 @@ __FBSDID("$FreeBSD$");
 #include <sys/module.h>
 #include <sys/ktr.h>
 
-#if !defined(__DragonFly__)
-#include <sys/smp.h>	/* for mp_ncpus */
-#include <machine/bus.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -252,18 +248,11 @@ ath_ioctl(struct ieee80211com *ic, u_long cmd, void *data)
 		sc->sc_stats.ast_rx_packets = 0;
 		TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
 			ifp = vap->iv_ifp;
-#if defined(__DragonFly__)
 			uint64_t v;
 			IFNET_STAT_GET(ifp, opackets, v);
 			sc->sc_stats.ast_tx_packets += v;
 			IFNET_STAT_GET(ifp, ipackets, v);
 			sc->sc_stats.ast_rx_packets += v;
-#else
-			sc->sc_stats.ast_tx_packets += ifp->if_get_counter(ifp,
-			    IFCOUNTER_OPACKETS);
-			sc->sc_stats.ast_rx_packets += ifp->if_get_counter(ifp,
-			    IFCOUNTER_IPACKETS);
-#endif
 		}
 		sc->sc_stats.ast_tx_rssi = ATH_RSSI(sc->sc_halstats.ns_avgtxrssi);
 		sc->sc_stats.ast_rx_rssi = ATH_RSSI(sc->sc_halstats.ns_avgrssi);

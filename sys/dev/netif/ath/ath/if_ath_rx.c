@@ -68,12 +68,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/module.h>
 #include <sys/ktr.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <sys/smp.h>   /* for mp_ncpus */
-#include <machine/bus.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -83,9 +78,7 @@ __FBSDID("$FreeBSD$");
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_llc.h>
-#if defined(__DragonFly__)
 #include <net/ifq_var.h>
-#endif
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
@@ -276,17 +269,10 @@ ath_legacy_rxbuf_init(struct ath_softc *sc, struct ath_buf *bf)
 		}
 		m->m_pkthdr.len = m->m_len = m->m_ext.ext_size;
 
-#if defined(__DragonFly__)
 		error = bus_dmamap_load_mbuf_segment(sc->sc_dmat,
 					     bf->bf_dmamap, m,
 					     bf->bf_segs, 1, &bf->bf_nseg,
 					     BUS_DMA_NOWAIT);
-#else
-		error = bus_dmamap_load_mbuf_sg(sc->sc_dmat,
-					     bf->bf_dmamap, m,
-					     bf->bf_segs, &bf->bf_nseg,
-					     BUS_DMA_NOWAIT);
-#endif
 		if (error != 0) {
 			DPRINTF(sc, ATH_DEBUG_ANY,
 			    "%s: bus_dmamap_load_mbuf_sg failed; error %d\n",
@@ -735,11 +721,7 @@ ath_rx_pkt(struct ath_softc *sc, struct ath_rx_status *rs, HAL_STATUS status,
 					rs->rs_keyix-32 : rs->rs_keyix);
 			}
 		}
-#if defined(__DragonFly__)
 		++ic->ic_ierrors;	/* don't care about SMP races */
-#else
-		counter_u64_add(ic->ic_ierrors, 1);
-#endif
 rx_error:
 		/*
 		 * Cleanup any pending partial frame.

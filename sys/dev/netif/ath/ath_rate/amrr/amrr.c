@@ -56,12 +56,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/lock.h>
 #include <sys/errno.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/bus.h>
 
 #include <sys/socket.h>
@@ -472,7 +467,6 @@ ath_rate_detach(struct ath_ratectrl *arc)
 	kfree(asc, M_DEVBUF);
 }
 
-#if defined(__DragonFly__)
 
 /*
  * Module glue.
@@ -515,4 +509,3 @@ MODULE_VERSION(ath_rate, 1);
 MODULE_DEPEND(ath_rate, ath_hal, 1, 1, 1);
 MODULE_DEPEND(ath_rate, wlan, 1, 1, 1);
 
-#endif

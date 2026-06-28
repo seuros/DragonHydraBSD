@@ -30,9 +30,7 @@
  */
 #include "opt_ah.h"
 
-#if defined(__DragonFly__)
 #define CTLFLAG_RWTUN	CTLFLAG_RW
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -42,16 +40,11 @@
 #include <sys/bus.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#if defined(__DragonFly__)
-#else
-#include <sys/pcpu.h>
-#endif
 #include <sys/lock.h>
 
 #include <machine/stdarg.h>
 
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
-#if defined(__DragonFly__)
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -59,7 +52,6 @@
 #include <net/if_types.h>
 #include <netproto/802_11/ieee80211_var.h>	/* ether_sprintf */
 
-#endif
 
 #include <dev/netif/ath/ath_hal/ah.h>
 #include <dev/netif/ath/ath_hal/ah_debug.h>

@@ -45,12 +45,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/lock.h>
 #include <sys/errno.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/bus.h>
 #include <sys/rman.h>
 
@@ -65,12 +60,6 @@ __FBSDID("$FreeBSD$");
 
 #include <dev/netif/ath/ath/if_athvar.h>
 
-#if defined(__DragonFly__)
-#else
-#include <mips/atheros/ar71xxreg.h>
-#include <mips/atheros/ar91xxreg.h>
-#include <mips/atheros/ar71xx_cpudef.h>
-#endif
 
 /*
  * bus glue.
@@ -123,19 +112,7 @@ ath_ahb_probe(device_t dev)
 	return ENXIO;
 }
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-
-static void
-ath_ahb_intr(void *arg)
-{
-	/* XXX TODO: check if its ours! */
-	ar71xx_device_flush_ddr(AR71XX_CPU_DDR_FLUSH_WMAC);
-	ath_intr(arg);
-}
-
-#endif
 
 static int
 ath_ahb_attach(device_t dev)
@@ -231,7 +208,6 @@ ath_ahb_attach(device_t dev)
 		goto bad1;
 	}
 
-#if defined(__DragonFly__)
 	if (bus_setup_intr(dev, psc->sc_irq,
 			   INTR_MPSAFE,
 			   ath_intr, sc, &psc->sc_ih,
@@ -239,39 +215,18 @@ ath_ahb_attach(device_t dev)
 		device_printf(dev, "could not establish interrupt\n");
 		goto bad2;
 	}
-#else
-	if (bus_setup_intr(dev, psc->sc_irq,
-			   INTR_TYPE_NET | INTR_MPSAFE,
-			   NULL, ath_ahb_intr, sc, &psc->sc_ih)) {
-		device_printf(dev, "could not establish interrupt\n");
-		goto bad2;
-	}
-#endif
 
 	/*
 	 * Setup DMA descriptor area.
 	 */
 	if (bus_dma_tag_create(bus_get_dma_tag(dev),	/* parent */
-#if defined(__DragonFly__)
 			       16, 0,			/* alignment, bounds */
-#else
-			       1, 0,			/* alignment, bounds */
-#endif
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-#if defined(__DragonFly__)
-#else
-			       NULL, NULL,		/* filter, filterarg */
-#endif
 			       0x3ffff,			/* maxsize XXX */
 			       ATH_MAX_SCATTER,		/* nsegments */
 			       0x3ffff,			/* maxsegsize XXX */
 			       BUS_DMA_ALLOCNOW,	/* flags */
-#if defined(__DragonFly__)
-#else
-			       NULL,			/* lockfunc */
-			       NULL,			/* lockarg */
-#endif
 			       &sc->sc_dmat)) {
 		device_printf(dev, "cannot allocate DMA tag\n");
 		goto bad3;
@@ -399,10 +354,6 @@ static driver_t ath_ahb_driver = {
 };
 static	devclass_t ath_devclass;
 DRIVER_MODULE(ath, nexus, ath_ahb_driver, ath_devclass, NULL, NULL);
-#if defined(__DragonFly__)
-#else
-DRIVER_MODULE(ath, apb, ath_ahb_driver, ath_devclass, 0, 0);
-#endif
 MODULE_VERSION(ath, 1);
 MODULE_DEPEND(ath, wlan, 1, 1, 1);		/* 802.11 media layer */
 MODULE_DEPEND(ath, if_ath, 1, 1, 1);		/* if_ath driver */

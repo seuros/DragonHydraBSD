@@ -43,12 +43,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/lock.h>
 #include <sys/errno.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/bus.h>
 #include <sys/rman.h>
 
@@ -63,13 +58,8 @@ __FBSDID("$FreeBSD$");
 
 #include <dev/netif/ath/ath/if_athvar.h>
 
-#if defined(__DragonFly__)
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#else
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
-#endif
 
 /* For EEPROM firmware */
 #ifdef	ATH_EEPROM_FIRMWARE
@@ -303,7 +293,6 @@ ath_pci_attach(device_t dev)
 		device_printf(dev, "could not map interrupt\n");
 		goto bad1;
 	}
-#if defined(__DragonFly__)
 	if (bus_setup_intr(dev, psc->sc_irq,
 			   INTR_MPSAFE,
 			   ath_intr, sc, &psc->sc_ih,
@@ -311,39 +300,18 @@ ath_pci_attach(device_t dev)
 		device_printf(dev, "could not establish interrupt\n");
 		goto bad2;
 	}
-#else
-	if (bus_setup_intr(dev, psc->sc_irq,
-			   INTR_TYPE_NET | INTR_MPSAFE,
-			   NULL, ath_intr, sc, &psc->sc_ih)) {
-		device_printf(dev, "could not establish interrupt\n");
-		goto bad2;
-	}
-#endif
 
 	/*
 	 * Setup DMA descriptor area.
 	 */
 	if (bus_dma_tag_create(bus_get_dma_tag(dev),	/* parent */
-#if defined(__DragonFly__)
 			       16, 0,			/* alignment, bounds */
-#else
-			       1, 0,			/* alignment, bounds */
-#endif
 			       BUS_SPACE_MAXADDR_32BIT,	/* lowaddr */
 			       BUS_SPACE_MAXADDR,	/* highaddr */
-#if defined(__DragonFly__)
-#else
-			       NULL, NULL,		/* filter, filterarg */
-#endif
 			       0x3ffff,			/* maxsize XXX */
 			       ATH_MAX_SCATTER,		/* nsegments */
 			       0x3ffff,			/* maxsegsize XXX */
 			       BUS_DMA_ALLOCNOW,	/* flags */
-#if defined(__DragonFly__)
-#else
-			       NULL,			/* lockfunc */
-			       NULL,			/* lockarg */
-#endif
 			       &sc->sc_dmat)) {
 		device_printf(dev, "cannot allocate DMA tag\n");
 		goto bad3;

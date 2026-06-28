@@ -51,11 +51,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/taskqueue.h>
 #include <sys/caps.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_dl.h>

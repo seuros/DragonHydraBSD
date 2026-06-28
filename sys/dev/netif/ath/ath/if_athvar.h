@@ -48,9 +48,7 @@
 
 #define	ATH_TIMEOUT		1000
 
-#if defined(__DragonFly__)
 #define ATH_ENABLE_11N
-#endif
 
 /*
  * There is a separate TX ath_buf pool for management frames.
@@ -201,11 +199,7 @@ struct ath_node {
 	struct ath_buf	*an_ff_buf[WME_NUM_AC]; /* ff staging area */
 	struct ath_tid	an_tid[IEEE80211_TID_SIZE];	/* per-TID state */
 	char		an_name[32];	/* eg "wlan0_a1" */
-#if defined(__DragonFly__)
 	struct lock	an_mtx;		/* protecting the rate control state */
-#else
-	struct mtx	an_mtx;		/* protecting the rate control state */
-#endif
 	uint32_t	an_swq_depth;	/* how many SWQ packets for this
 					   node */
 	int			clrdmask;	/* has clrdmask been set */
@@ -362,11 +356,7 @@ struct ath_txq {
 	u_int			axq_intrcnt;	/* interrupt count */
 	u_int32_t		*axq_link;	/* link ptr in last TX desc */
 	TAILQ_HEAD(axq_q_s, ath_buf)	axq_q;		/* transmit queue */
-#if defined(__DragonFly__)
 	struct lock		axq_lock;	/* lock on q and link */
-#else
-	struct mtx		axq_lock;	/* lock on q and link */
-#endif
 
 	/*
 	 * This is the FIFO staging buffer when doing EDMA.
@@ -607,31 +597,14 @@ struct ath_softc {
 	HAL_BUS_TAG		sc_st;		/* bus space tag */
 	HAL_BUS_HANDLE		sc_sh;		/* bus space handle */
 	bus_dma_tag_t		sc_dmat;	/* bus DMA tag */
-#if defined(__DragonFly__)
 	struct lock		sc_mtx;		/* master lock (recursive) */
 	struct lock		sc_pcu_mtx;	/* PCU access mutex */
-#else
-	struct mtx		sc_mtx;		/* master lock (recursive) */
-	struct mtx		sc_pcu_mtx;	/* PCU access mutex */
-#endif
 	char			sc_pcu_mtx_name[32];
-#if defined(__DragonFly__)
 	struct lock		sc_rx_mtx;	/* RX access mutex */
-#else
-	struct mtx		sc_rx_mtx;	/* RX access mutex */
-#endif
 	char			sc_rx_mtx_name[32];
-#if defined(__DragonFly__)
 	struct lock		sc_tx_mtx;	/* TX handling/comp mutex */
-#else
-	struct mtx		sc_tx_mtx;	/* TX handling/comp mutex */
-#endif
 	char			sc_tx_mtx_name[32];
-#if defined(__DragonFly__)
 	struct lock		sc_tx_ic_mtx;	/* TX queue mutex */
-#else
-	struct mtx		sc_tx_ic_mtx;	/* TX queue mutex */
-#endif
 	char			sc_tx_ic_mtx_name[32];
 	struct taskqueue	*sc_tq;		/* private task queue */
 	struct ath_hal		*sc_ah;		/* Atheros HAL */
@@ -782,11 +755,7 @@ struct ath_softc {
 	struct ath_descdma	sc_txdma_mgmt;	/* mgmt TX descriptors */
 	ath_bufhead		sc_txbuf_mgmt;	/* mgmt transmit buffer */
 	struct ath_descdma	sc_txsdma;	/* EDMA TX status desc's */
-#if defined(__DragonFly__)
 	struct lock		sc_txbuflock;	/* txbuf lock */
-#else
-	struct mtx		sc_txbuflock;	/* txbuf lock */
-#endif
 	char			sc_txname[12];	/* e.g. "ath0_buf" */
 	u_int			sc_txqsetup;	/* h/w queues setup */
 	u_int			sc_txintrperiod;/* tx interrupt batching */
@@ -796,11 +765,7 @@ struct ath_softc {
 	struct task		sc_txqtask;	/* tx proc processing */
 
 	struct ath_descdma	sc_txcompdma;	/* TX EDMA completion */
-#if defined(__DragonFly__)
 	struct lock		sc_txcomplock;	/* TX EDMA completion lock */
-#else
-	struct mtx		sc_txcomplock;	/* TX EDMA completion lock */
-#endif
 	char			sc_txcompname[12];	/* eg ath0_txcomp */
 
 	int			sc_wd_timer;	/* count down for wd timer */
@@ -1061,12 +1026,10 @@ void	ath_suspend(struct ath_softc *);
 void	ath_shutdown(struct ath_softc *);
 void	ath_intr(void *);
 
-#if defined(__DragonFly__)
 
 #define IF_LOCK(ifsnd)		/* XXX */
 #define IF_UNLOCK(ifsnd)	/* XXX */
 
-#endif
 
 /*
  * HAL definitions to comply with local coding convention.

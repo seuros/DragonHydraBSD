@@ -42,10 +42,6 @@
 #include <sys/errno.h>
 #include <sys/firmware.h>
 #include <sys/lock.h>
-#if !defined(__DragonFly__)
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/socket.h>
@@ -60,53 +56,25 @@
 #include <net/if_media.h>
 #include <net/if_types.h>
 
-#if defined(__DragonFly__)
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 #include <dev/netif/bwn/siba/siba_ids.h>
 #include <dev/netif/bwn/siba/sibareg.h>
 #include <dev/netif/bwn/siba/sibavar.h>
-#else
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
-#include <dev/siba/siba_ids.h>
-#include <dev/siba/sibareg.h>
-#include <dev/siba/sibavar.h>
-#endif
 
-#if defined(__DragonFly__)
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_radiotap.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
 #include <netproto/802_11/ieee80211_phy.h>
 #include <netproto/802_11/ieee80211_ratectl.h>
-#else
-#include <net80211/ieee80211_var.h>
-#include <net80211/ieee80211_radiotap.h>
-#include <net80211/ieee80211_regdomain.h>
-#include <net80211/ieee80211_phy.h>
-#include <net80211/ieee80211_ratectl.h>
-#endif
 
-#if defined(__DragonFly__)
 #include "if_bwnreg.h"
 #include "if_bwnvar.h"
-#else
-#include <dev/bwn/if_bwnreg.h>
-#include <dev/bwn/if_bwnvar.h>
-#endif
 
-#if defined(__DragonFly__)
 #include "if_bwn_chipid.h"
 #include "if_bwn_debug.h"
 #include "if_bwn_misc.h"
 #include "if_bwn_util.h"
-#else
-#include <dev/bwn/if_bwn_chipid.h>
-#include <dev/bwn/if_bwn_debug.h>
-#include <dev/bwn/if_bwn_misc.h>
-#include <dev/bwn/if_bwn_util.h>
-#endif
 
 unsigned int
 bwn_sqrt(struct bwn_mac *mac, unsigned int x)

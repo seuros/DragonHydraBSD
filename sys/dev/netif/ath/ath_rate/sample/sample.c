@@ -54,12 +54,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/malloc.h>
 #include <sys/errno.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/bus.h>
 
 #include <sys/socket.h>
@@ -84,9 +79,7 @@ __FBSDID("$FreeBSD$");
 #include <dev/netif/ath/ath_hal/ah_desc.h>
 #include <dev/netif/ath/ath_rate/sample/tx_schedules.h>
 
-#if defined(__DragonFly__)
 extern const char* ath_hal_ether_sprintf(const uint8_t *mac);
-#endif
 
 /*
  * This file is an implementation of the SampleRate algorithm
@@ -1100,13 +1093,8 @@ ath_rate_ctl_reset(struct ath_softc *sc, struct ieee80211_node *ni)
 	if (ieee80211_msg(ni->ni_vap, IEEE80211_MSG_RATECTL)) {
 		uint64_t mask;
 
-#if defined(__DragonFly__)
 		ieee80211_note(ni->ni_vap, "[%s] %s: size 1600 rate/tt",
 		    ath_hal_ether_sprintf(ni->ni_macaddr), __func__);
-#else
-		ieee80211_note(ni->ni_vap, "[%6D] %s: size 1600 rate/tt",
-		    ni->ni_macaddr, ":", __func__);
-#endif
 		for (mask = sn->ratemask, rix = 0; mask != 0; mask >>= 1, rix++) {
 			if ((mask & 1) == 0)
 				continue;
@@ -1209,13 +1197,8 @@ ath_rate_fetch_node_stats(struct ath_softc *sc, struct ath_node *an,
 	 * Take a temporary copy of the sample node state so we can
 	 * modify it before we copy it.
 	 */
-#if defined(__DragonFly__)
 	tv = kmalloc(sizeof(struct ath_rateioctl_rt), M_TEMP,
 		M_INTWAIT | M_ZERO);
-#else
-	tv = malloc(sizeof(struct ath_rateioctl_rt), M_TEMP,
-		M_NOWAIT | M_ZERO);
-#endif
 	if (tv == NULL) {
 		return (ENOMEM);
 	}
@@ -1387,11 +1370,7 @@ ath_rate_attach(struct ath_softc *sc)
 {
 	struct sample_softc *ssc;
 	
-#if defined(__DragonFly__)
 	ssc = kmalloc(sizeof(struct sample_softc), M_DEVBUF, M_INTWAIT|M_ZERO);
-#else
-	ssc = malloc(sizeof(struct sample_softc), M_DEVBUF, M_NOWAIT|M_ZERO);
-#endif
 	if (ssc == NULL)
 		return NULL;
 	ssc->arc.arc_space = sizeof(struct sample_node);
@@ -1413,7 +1392,6 @@ ath_rate_detach(struct ath_ratectrl *arc)
 	kfree(ssc, M_DEVBUF);
 }
 
-#if defined(__DragonFly__)
 
 /*
  * Module glue.
@@ -1456,4 +1434,3 @@ MODULE_VERSION(ath_rate, 1);
 MODULE_DEPEND(ath_rate, ath_hal, 1, 1, 1);
 MODULE_DEPEND(ath_rate, wlan, 1, 1, 1);
 
-#endif

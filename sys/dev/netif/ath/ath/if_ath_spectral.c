@@ -46,12 +46,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/malloc.h>
 #include <sys/errno.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/bus.h>
 
 #include <sys/socket.h>

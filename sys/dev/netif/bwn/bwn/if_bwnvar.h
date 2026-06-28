@@ -906,13 +906,6 @@ struct bwn_mac {
 #define	BWN_MAC_FLAG_WME		(1 << 4)
 #define	BWN_MAC_FLAG_HWCRYPTO		(1 << 5)
 
-#if !defined(__DragonFly__)
-	struct resource_spec		*mac_intr_spec;
-#define	BWN_MSI_MESSAGES		1
-	struct resource			*mac_res_irq[BWN_MSI_MESSAGES];
-	void				*mac_intrhand[BWN_MSI_MESSAGES];
-	int				mac_msi;
-#endif
 
 	struct bwn_noise		mac_noise;
 	struct bwn_phy			mac_phy;
@@ -971,11 +964,7 @@ struct bwn_vap {
 
 struct bwn_softc {
 	device_t			sc_dev;
-#if defined(__DragonFly__)
 	struct lock			sc_lk;
-#else
-	struct mtx			sc_mtx;
-#endif
 	struct ieee80211com		sc_ic;
 	struct mbufq			sc_snd;
 	unsigned			sc_flags;
@@ -1026,22 +1015,12 @@ struct bwn_softc {
 	struct bwn_rx_radiotap_header	sc_rx_th;
 };
 
-#if defined(__DragonFly__)
 #define	BWN_LOCK_INIT(sc) \
 	lockinit(&(sc)->sc_lk, device_get_nameunit((sc)->sc_dev), 0, 0)
 #define	BWN_LOCK_DESTROY(sc)	lockuninit(&(sc)->sc_lk)
 #define	BWN_LOCK(sc)		lockmgr(&(sc)->sc_lk, LK_EXCLUSIVE)
 #define	BWN_UNLOCK(sc)		lockmgr(&(sc)->sc_lk, LK_RELEASE)
 #define	BWN_ASSERT_LOCKED(sc)	KKASSERT(lockstatus(&(sc)->sc_lk, curthread) == LK_EXCLUSIVE)
-#else
-#define	BWN_LOCK_INIT(sc) \
-	mtx_init(&(sc)->sc_mtx, device_get_nameunit((sc)->sc_dev), \
-	    MTX_NETWORK_LOCK, MTX_DEF)
-#define	BWN_LOCK_DESTROY(sc)	mtx_destroy(&(sc)->sc_mtx)
-#define	BWN_LOCK(sc)		mtx_lock(&(sc)->sc_mtx)
-#define	BWN_UNLOCK(sc)		mtx_unlock(&(sc)->sc_mtx)
-#define	BWN_ASSERT_LOCKED(sc)	mtx_assert(&(sc)->sc_mtx, MA_OWNED)
-#endif
 
 static inline bwn_band_t
 bwn_channel_band(struct bwn_mac *mac, struct ieee80211_channel *c)

@@ -58,11 +58,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/taskqueue.h>
 #include <sys/caps.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#endif
 
 #include <net/if.h>
 #include <net/if_var.h>
@@ -824,17 +820,13 @@ ath_sysctlattach(struct ath_softc *sc)
 #ifdef	ATH_DEBUG
 	SYSCTL_ADD_QUAD(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		"debug", CTLFLAG_RW, &sc->sc_debug,
-#if defined(__DragonFly__)
 		0,
-#endif
 		"control debugging printfs");
 #endif
 #ifdef	ATH_DEBUG_ALQ
 	SYSCTL_ADD_QUAD(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,
 		"ktrdebug", CTLFLAG_RW, &sc->sc_ktrdebug,
-#if defined(__DragonFly__)
 		0,
-#endif
 		"control debugging KTR");
 #endif /* ATH_DEBUG_ALQ */
 	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(tree), OID_AUTO,

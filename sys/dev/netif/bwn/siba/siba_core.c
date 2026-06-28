@@ -44,10 +44,6 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_core.c 299541 2016-05-12 16:14:16Z ad
 #include <sys/endian.h>
 #include <sys/errno.h>
 #include <sys/lock.h>
-#if !defined(__DragonFly__)
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/bus.h>
 #include <sys/rman.h>
 #include <sys/socket.h>
@@ -56,23 +52,12 @@ __FBSDID("$FreeBSD: head/sys/dev/siba/siba_core.c 299541 2016-05-12 16:14:16Z ad
 #include <net/if_media.h>
 #include <net/if_arp.h>
 
-#if defined(__DragonFly__)
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
-#else
-#include <dev/pci/pcivar.h>
-#include <dev/pci/pcireg.h>
-#endif
 
-#if defined(__DragonFly__)
 #include "siba_ids.h"
 #include "sibareg.h"
 #include "sibavar.h"
-#else
-#include <dev/siba/siba_ids.h>
-#include <dev/siba/sibareg.h>
-#include <dev/siba/sibavar.h>
-#endif
 
 enum {
 	SIBA_DEBUG_SCAN		= 0x00000001,	/* scan */
@@ -369,13 +354,8 @@ siba_scan(struct siba_softc *siba)
 		case SIBA_DEVID_PCI:
 		case SIBA_DEVID_PCIE:
 			n_pci++;
-#if defined(__DragonFly__)
 			error = pci_find_extcap(siba->siba_dev, PCIY_EXPRESS,
 			    &base);
-#else
-			error = pci_find_cap(siba->siba_dev, PCIY_EXPRESS,
-			    &base);
-#endif
 			is_pcie = (error == 0) ? 1 : 0;
 
 			if (n_pci > 1) {

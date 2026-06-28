@@ -46,12 +46,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/malloc.h>
 #include <sys/errno.h>
 
-#if defined(__DragonFly__)
 /* empty */
-#else
-#include <machine/bus.h>
-#include <machine/resource.h>
-#endif
 #include <sys/bus.h>
 
 #include <sys/socket.h>
@@ -297,7 +292,6 @@ ath_dfs_get_thresholds(struct ath_softc *sc, HAL_PHYERR_PARAM *param)
 	return (1);
 }
 
-#if defined(__DragonFly__)
 /*
  * Module glue.
  */
@@ -336,4 +330,3 @@ static moduledata_t null_dfs_mod = {
 DECLARE_MODULE(ath_dfs, null_dfs_mod, SI_SUB_DRIVERS, SI_ORDER_FIRST);
 MODULE_VERSION(ath_dfs, 1);
 
-#endif
