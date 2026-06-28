@@ -342,7 +342,7 @@ int	ena_dma_alloc(device_t dmadev, bus_size_t size, ena_mem_handle_t *dma,
 #define VLAN_HLEN 	sizeof(struct ether_vlan_header)
 #define CSUM_OFFLOAD 	(CSUM_IP|CSUM_TCP|CSUM_UDP)
 
-#if defined(__i386__) || defined(__amd64__)
+#ifdef __amd64__
 static __inline
 void prefetch(void *x)
 {

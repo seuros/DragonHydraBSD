@@ -114,20 +114,12 @@ __extension__ ({ __uint64_t __X = (x); \
 	 ((x << 40) & ((__uint64_t)0xff << 48)) | \
 	 ((x << 56))))
 
-#ifdef __i386__
-
-#define	__byte_swap_long(x)	__byte_swap_long_const(x)
-
-#else
-
 #ifdef __OPTIMIZE__
 #define	__byte_swap_long(x)	(__builtin_constant_p(x) ? \
 	__byte_swap_long_const(x) : __byte_swap_long_var(x))
 #else	/* __OPTIMIZE__ */
 #define	__byte_swap_long(x)	__byte_swap_long_var(x)
 #endif	/* __OPTIMIZE__ */
-
-#endif	/* __i386__ */
 
 #define __byte_swap_word_var(x) \
 __extension__ ({ __uint16_t __X = (x); \

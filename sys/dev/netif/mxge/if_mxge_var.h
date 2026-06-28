@@ -220,7 +220,7 @@ struct mxge_media_type {
 };
 
 #if defined(__GNUC__)
-#if defined(__i386__) || defined(__x86_64__)
+#ifdef __x86_64__
 #define wmb()  __asm__ __volatile__ ("sfence;": : :"memory")
 #else
 #error "unknown arch"

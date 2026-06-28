@@ -78,7 +78,7 @@ static devclass_t agp_devclass;
 void
 agp_flush_cache(void)
 {
-#if defined(__i386__) || defined(__x86_64__)
+#ifdef __x86_64__
 	wbinvd();
 #endif
 }

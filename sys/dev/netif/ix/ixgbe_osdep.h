@@ -135,7 +135,7 @@ typedef uint64_t	u64;
 
 #define le16_to_cpu
 
-#if defined(__i386__) || defined(__x86_64__)
+#ifdef __x86_64__
 #define mb()	__asm volatile("mfence" ::: "memory")
 #define wmb()	__asm volatile("sfence" ::: "memory")
 #define rmb()	__asm volatile("lfence" ::: "memory")
@@ -145,7 +145,7 @@ typedef uint64_t	u64;
 #define wmb()
 #endif
 
-#if defined(__i386__) || defined(__x86_64__)
+#ifdef __x86_64__
 static __inline
 void prefetch(void *x)
 {

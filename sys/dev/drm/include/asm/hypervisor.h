@@ -3,7 +3,7 @@
 #ifndef _ASM_HYPERVISOR_H
 #define _ASM_HYPERVISOR_H
 
-#if defined(__i386__) || defined(__amd64__)
+#ifdef __amd64__
 
 #define X86_HYPER_NATIVE 1
 

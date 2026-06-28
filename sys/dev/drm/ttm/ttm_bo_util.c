@@ -512,7 +512,7 @@ pgprot_t ttm_io_prot(uint32_t caching_flags, pgprot_t tmp)
 	if (caching_flags & TTM_PL_FLAG_CACHED)
 		return tmp;
 
-#if defined(__i386__) || defined(__x86_64__)
+#ifdef __x86_64__
 	if (caching_flags & TTM_PL_FLAG_WC)
 		tmp = pgprot_writecombine(tmp);
 	else
