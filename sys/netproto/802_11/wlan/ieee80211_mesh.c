@@ -27,9 +27,6 @@
  * SUCH DAMAGE. 
  */ 
 #include <sys/cdefs.h>
-#ifdef __FreeBSD__
-__FBSDID("$FreeBSD$");
-#endif
 
 /*
  * IEEE 802.11s Mesh Point (MBSS) support.
@@ -203,24 +200,14 @@ mesh_rt_add_locked(struct ieee80211vap *vap,
 
 	MESH_RT_LOCK_ASSERT(ms);
 
-#if defined(__DragonFly__)
 	rt = kmalloc(ALIGN(sizeof(struct ieee80211_mesh_route)) +
 	    ms->ms_ppath->mpp_privlen, M_80211_MESH_RT, M_INTWAIT | M_ZERO);
-#else
-	rt = IEEE80211_MALLOC(ALIGN(sizeof(struct ieee80211_mesh_route)) +
-	    ms->ms_ppath->mpp_privlen, M_80211_MESH_RT,
-	    IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (rt != NULL) {
 		rt->rt_vap = vap;
 		IEEE80211_ADDR_COPY(rt->rt_dest, dest);
 		rt->rt_priv = (void *)ALIGN(&rt[1]);
 		MESH_RT_ENTRY_LOCK_INIT(rt, "MBSS_RT");
-#if defined(__DragonFly__)
 		callout_init_mp(&rt->rt_discovery);
-#else
-		callout_init(&rt->rt_discovery, 1);
-#endif
 		rt->rt_updtime = ticks;	/* create time */
 		TAILQ_INSERT_TAIL(&ms->ms_routes, rt, rt_next);
 	}
@@ -667,13 +654,8 @@ mesh_vattach(struct ieee80211vap *vap)
 	vap->iv_opdetach = mesh_vdetach;
 	vap->iv_recv_mgmt = mesh_recv_mgmt;
 	vap->iv_recv_ctl = mesh_recv_ctl;
-#if defined(__DragonFly__)
 	ms = kmalloc(sizeof(struct ieee80211_mesh_state), M_80211_VAP,
 	    M_INTWAIT | M_ZERO);
-#else
-	ms = IEEE80211_MALLOC(sizeof(struct ieee80211_mesh_state), M_80211_VAP,
-	    IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (ms == NULL) {
 		kprintf("%s: couldn't alloc MBSS state\n", __func__);
 		return;
@@ -685,13 +667,8 @@ mesh_vattach(struct ieee80211vap *vap)
 	TAILQ_INIT(&ms->ms_known_gates);
 	TAILQ_INIT(&ms->ms_routes);
 	MESH_RT_LOCK_INIT(ms, "MBSS");
-#if defined(__DragonFly__)
 	callout_init_mp(&ms->ms_cleantimer);
 	callout_init_mp(&ms->ms_gatetimer);
-#else
-	callout_init(&ms->ms_cleantimer, 1);
-	callout_init(&ms->ms_gatetimer, 1);
-#endif
 	ms->ms_gateseq = 0;
 	mesh_select_proto_metric(vap, "AIRTIME");
 	KASSERT(ms->ms_pmetric, ("ms_pmetric == NULL"));
@@ -895,14 +872,8 @@ ieee80211_mesh_mark_gate(struct ieee80211vap *vap, const uint8_t *addr,
 		/* New mesh gate add it to known table. */
 		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, addr,
 		    "%s", "stored new gate information from pro-PREQ.");
-#if defined(__DragonFly__)
 		gr = kmalloc(ALIGN(sizeof(struct ieee80211_mesh_gate_route)),
 		    M_80211_MESH_GT_RT, M_INTWAIT | M_ZERO);
-#else
-		gr = IEEE80211_MALLOC(ALIGN(sizeof(struct ieee80211_mesh_gate_route)),
-		    M_80211_MESH_GT_RT,
-		    IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 		IEEE80211_ADDR_COPY(gr->gr_addr, addr);
 		TAILQ_INSERT_TAIL(&ms->ms_known_gates, gr, gr_next);
 	}
@@ -1111,16 +1082,10 @@ ieee80211_mesh_forward_to_gates(struct ieee80211vap *vap,
 	TAILQ_FOREACH_SAFE(gr, &ms->ms_known_gates, gr_next, gr_next) {
 		rt_gate = gr->gr_route;
 		if (rt_gate == NULL) {
-#if defined(__DragonFly__)
 			IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_HWMP,
 				rt_dest->rt_dest,
 				"mesh gate with no path %s",
 				ether_sprintf(gr->gr_addr));
-#else
-			IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_HWMP,
-				"mesh gate with no path %6D",
-				gr->gr_addr, ":");
-#endif
 			continue;
 		}
 		if ((rt_gate->rt_flags & IEEE80211_MESHRT_FLAGS_VALID) == 0)
@@ -1417,13 +1382,8 @@ mesh_recv_indiv_data_to_fwrd(struct ieee80211vap *vap, struct mbuf *m,
 	/* set lifetime of addr3 (meshDA) to initial value */
 	rt_meshda = ieee80211_mesh_rt_find(vap, qwh->i_addr3);
 	if (rt_meshda == NULL) {
-#if defined(__DragonFly__)
 		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, qwh->i_addr2,
 		    "no route to meshDA(%s)", ether_sprintf(qwh->i_addr3));
-#else
-		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, qwh->i_addr2,
-		    "no route to meshDA(%6D)", qwh->i_addr3, ":");
-#endif
 		/*
 		 * [Optional] any of the following three actions:
 		 * o silently discard 				[X]
@@ -1509,16 +1469,10 @@ mesh_recv_indiv_data_to_me(struct ieee80211vap *vap, struct mbuf *m,
 		 * All other cases: forward of MSDUs from the MBSS to DS indiv.
 		 * addressed according to 13.11.3.2.
 		 */
-#if defined(__DragonFly__)
 		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_OUTPUT, qwh->i_addr2,
 		    "forward frame to DS, SA(%s) DA(%s)",
 		    ether_sprintf(mc10->mc_addr6),
 		    ether_sprintf(mc10->mc_addr5));
-#else
-		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_OUTPUT, qwh->i_addr2,
-		    "forward frame to DS, SA(%6D) DA(%6D)",
-		    mc10->mc_addr6, ":", mc10->mc_addr5, ":");
-#endif
 	}
 	return (0); /* process locally */
 }
@@ -2629,16 +2583,10 @@ mesh_recv_action_meshgate(struct ieee80211_node *ni,
 	if (IEEE80211_ADDR_EQ(vap->iv_myaddr, ie.gann_addr))
 		return 0;
 
-#if defined(__DragonFly__)
 	IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, ni->ni_macaddr,
 	    "received GANN, meshgate: %s (seq %u)",
 	    ether_sprintf(ie.gann_addr),
 	    ie.gann_seq);
-#else
-	IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, ni->ni_macaddr,
-	    "received GANN, meshgate: %6D (seq %u)", ie.gann_addr, ":",
-	    ie.gann_seq);
-#endif
 
 	if (ms == NULL)
 		return (0);
@@ -2663,14 +2611,8 @@ mesh_recv_action_meshgate(struct ieee80211_node *ni,
 		/* this GANN is from a new mesh Gate add it to known table. */
 		IEEE80211_NOTE_MAC(vap, IEEE80211_MSG_MESH, ie.gann_addr,
 		    "stored new GANN information, seq %u.", ie.gann_seq);
-#if defined(__DragonFly__)
 		gr = kmalloc(ALIGN(sizeof(struct ieee80211_mesh_gate_route)),
 		    M_80211_MESH_GT_RT, M_INTWAIT | M_ZERO);
-#else
-		gr = IEEE80211_MALLOC(ALIGN(sizeof(struct ieee80211_mesh_gate_route)),
-		    M_80211_MESH_GT_RT,
-		    IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 		IEEE80211_ADDR_COPY(gr->gr_addr, ie.gann_addr);
 		TAILQ_INSERT_TAIL(&ms->ms_known_gates, gr, gr_next);
 	}
@@ -3368,18 +3310,12 @@ mesh_airtime_calc(struct ieee80211_node *ni)
 	    ifp->if_mtu + IEEE80211_MESH_MAXOVERHEAD, rate, 0) << M_BITS;
 	/* Error rate in percentage */
 	/* XXX assuming small failures are ok */
-#if defined(__DragonFly__)
 	u_long	icount;
 	u_long	ocount;
 	IFNET_STAT_GET(ifp, ierrors, icount);
 	IFNET_STAT_GET(ifp, oerrors, ocount);
 	errrate = (((ocount + icount) / 100) << M_BITS)
 	    / 100;
-#else
-	errrate = (((ifp->if_get_counter(ifp, IFCOUNTER_OERRORS) +
-	    ifp->if_get_counter(ifp, IFCOUNTER_IERRORS)) / 100) << M_BITS)
-	    / 100;
-#endif
 	res = (overhead + (nbits / rate)) *
 	    ((1 << S_FACTOR) / ((1 << M_BITS) - errrate));
 
@@ -3428,13 +3364,8 @@ void
 ieee80211_mesh_node_init(struct ieee80211vap *vap, struct ieee80211_node *ni)
 {
 	ni->ni_flags |= IEEE80211_NODE_QOS;
-#if defined(__DragonFly__)
 	callout_init_mp(&ni->ni_mltimer);
 	callout_init_mp(&ni->ni_mlhtimer);
-#else
-	callout_init(&ni->ni_mltimer, 1);
-	callout_init(&ni->ni_mlhtimer, 1);
-#endif
 }
 
 /*
@@ -3531,12 +3462,7 @@ mesh_ioctl_get80211(struct ieee80211vap *vap, struct ieee80211req *ireq)
 			}
 			ireq->i_len = len;
 			/* XXX M_WAIT? */
-#if defined(__DragonFly__)
 			p = kmalloc(len, M_TEMP, M_INTWAIT | M_ZERO);
-#else
-			p = IEEE80211_MALLOC(len, M_TEMP,
-				IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 			if (p == NULL)
 				return ENOMEM;
 			off = 0;

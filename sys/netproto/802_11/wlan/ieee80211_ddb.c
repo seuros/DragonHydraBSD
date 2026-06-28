@@ -45,10 +45,6 @@ __FBSDID("$FreeBSD$");
 #include <net/if_media.h>
 #include <net/if_types.h>
 #include <net/ethernet.h>
-#if defined(__DragonFly__)
-#else
-#include <net/vnet.h>
-#endif
 
 #include <netproto/802_11/ieee80211_var.h>
 #ifdef IEEE80211_SUPPORT_TDMA
@@ -162,58 +158,7 @@ DB_SHOW_COMMAND(com, db_show_com)
 	_db_show_com(ic, showvaps, showsta, showmesh, showprocs);
 }
 
-#if defined(__DragonFly__)
 /* EMPTY */
-#else
-
-DB_SHOW_ALL_COMMAND(vaps, db_show_all_vaps)
-{
-	VNET_ITERATOR_DECL(vnet_iter);
-	const struct ifnet *ifp;
-	int i, showall = 0;
-
-	for (i = 0; modif[i] != '\0'; i++)
-		switch (modif[i]) {
-		case 'a':
-			showall = 1;
-			break;
-		}
-
-	VNET_FOREACH(vnet_iter) {
-		TAILQ_FOREACH(ifp, &V_ifnet, if_list)
-			if (ifp->if_type == IFT_IEEE80211) {
-				const struct ieee80211com *ic = ifp->if_l2com;
-
-				if (!showall) {
-					const struct ieee80211vap *vap;
-					db_printf("%s: com %p vaps:",
-					    ifp->if_xname, ic);
-					TAILQ_FOREACH(vap, &ic->ic_vaps,
-					    iv_next)
-						db_printf(" %s(%p)",
-						    vap->iv_ifp->if_xname, vap);
-					db_printf("\n");
-				} else
-					_db_show_com(ic, 1, 1, 1, 1);
-			}
-	}
-}
-
-#ifdef IEEE80211_SUPPORT_MESH
-DB_SHOW_ALL_COMMAND(mesh, db_show_mesh)
-{
-	const struct ieee80211_mesh_state *ms;
-
-	if (!have_addr) {
-		db_printf("usage: show mesh <addr>\n");
-		return;
-	}
-	ms = (const struct ieee80211_mesh_state *) addr;
-	_db_show_mesh(ms);
-}
-#endif /* IEEE80211_SUPPORT_MESH */
-
-#endif
 
 static void
 _db_show_txampdu(const char *sep, int ix, const struct ieee80211_tx_ampdu *tap)
@@ -895,14 +840,9 @@ _db_show_mesh(const struct ieee80211_mesh_state *ms)
 	db_printf("routing table:\n");
 	i = 0;
 	TAILQ_FOREACH(rt, &ms->ms_routes, rt_next) {
-#if defined(__DragonFly__)
 		db_printf("entry %d:\tdest: %s nexthop: %s metric: %u", i,
 		    ether_sprintf(rt->rt_dest), ether_sprintf(rt->rt_nexthop),
 		    rt->rt_metric);
-#else
-		db_printf("entry %d:\tdest: %6D nexthop: %6D metric: %u", i,
-		    rt->rt_dest, ":", rt->rt_nexthop, ":", rt->rt_metric);
-#endif
 
 		db_printf("\tlifetime: %u lastseq: %u priv: %p\n",
 		    ieee80211_mesh_rt_update(rt, 0),

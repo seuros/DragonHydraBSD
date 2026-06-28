@@ -111,13 +111,8 @@ tkip_attach(struct ieee80211vap *vap, struct ieee80211_key *k)
 {
 	struct tkip_ctx *ctx;
 
-#if defined(__DragonFly__)
 	ctx = (struct tkip_ctx *) kmalloc(sizeof(struct tkip_ctx),
 		M_80211_CRYPTO, M_INTWAIT | M_ZERO);
-#else
-	ctx = (struct tkip_ctx *) IEEE80211_MALLOC(sizeof(struct tkip_ctx),
-		M_80211_CRYPTO, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (ctx == NULL) {
 		vap->iv_stats.is_crypto_nomem++;
 		return NULL;

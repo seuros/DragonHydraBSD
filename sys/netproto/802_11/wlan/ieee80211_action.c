@@ -24,9 +24,6 @@
  */
 
 #include <sys/cdefs.h>
-#ifdef __FreeBSD__
-__FBSDID("$FreeBSD$");
-#endif
 
 /*
  * IEEE 802.11 send/recv action frame support.

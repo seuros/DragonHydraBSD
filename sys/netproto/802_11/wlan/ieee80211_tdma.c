@@ -25,9 +25,6 @@
  */
 
 #include <sys/cdefs.h>
-#ifdef __FreeBSD__
-__FBSDID("$FreeBSD$");
-#endif
 
 /*
  * IEEE 802.11 TDMA mode support.
@@ -150,15 +147,9 @@ ieee80211_tdma_vattach(struct ieee80211vap *vap)
 	KASSERT(vap->iv_caps & IEEE80211_C_TDMA,
 	     ("not a tdma vap, caps 0x%x", vap->iv_caps));
 
-#if defined(__DragonFly__)
 	ts = (struct ieee80211_tdma_state *) kmalloc(
 		sizeof(struct ieee80211_tdma_state), M_80211_VAP,
 		M_INTWAIT | M_ZERO);
-#else
-	ts = (struct ieee80211_tdma_state *) IEEE80211_MALLOC(
-		sizeof(struct ieee80211_tdma_state), M_80211_VAP,
-		IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (ts == NULL) {
 		kprintf("%s: cannot allocate TDMA state block\n", __func__);
 		/* NB: fall back to adhdemo mode */

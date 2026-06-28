@@ -244,13 +244,8 @@ ieee80211_alloc_countryie(struct ieee80211com *ic)
 	struct ieee80211_country_ie *ie;
 	int i, skip, nruns;
 
-#if defined(__DragonFly__)
 	aie = kmalloc(IEEE80211_COUNTRY_MAX_SIZE, M_80211_NODE_IE,
 	    M_INTWAIT | M_ZERO);
-#else
-	aie = IEEE80211_MALLOC(IEEE80211_COUNTRY_MAX_SIZE, M_80211_NODE_IE,
-	    IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (aie == NULL) {
 		ic_printf(ic, "%s: unable to allocate memory for country ie\n",
 		    __func__);

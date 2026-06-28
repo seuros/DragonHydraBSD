@@ -75,11 +75,7 @@ ieee80211_ratectl_sysctl_stats_node_iter(void *arg, struct ieee80211_node *ni)
 {
 
 	struct sbuf *sb = (struct sbuf *) arg;
-#if defined(__DragonFly__)
 	sbuf_printf(sb, "MAC: %6s\n", ether_sprintf(ni->ni_macaddr));
-#else
-	sbuf_printf(sb, "MAC: %6D\n", ni->ni_macaddr, ":");
-#endif
 	ieee80211_ratectl_node_stats(ni, sb);
 	sbuf_printf(sb, "\n");
 }
@@ -92,17 +88,7 @@ ieee80211_ratectl_sysctl_stats(SYSCTL_HANDLER_ARGS)
 	struct sbuf sb;
 	int error;
 
-#if defined(__DragonFly__)
-#else
-	error = sysctl_wire_old_buffer(req, 0);
-	if (error)
-		return (error);
-#endif
 	sbuf_new_for_sysctl(&sb, NULL, 8, req);
-#if defined(__DragonFly__)
-#else
-	sbuf_clear_flags(&sb, SBUF_INCLUDENUL);
-#endif
 
 	IEEE80211_LOCK(ic);
 	ieee80211_iterate_nodes(&ic->ic_sta,
@@ -123,15 +109,9 @@ ieee80211_ratectl_init(struct ieee80211vap *vap)
 	vap->iv_rate->ir_init(vap);
 
 	/* Attach generic stats sysctl */
-#if defined(__DragonFly__)
 	SYSCTL_ADD_PROC(vap->iv_sysctl, SYSCTL_CHILDREN(vap->iv_oid), OID_AUTO,
 	    "rate_stats", CTLTYPE_STRING | CTLFLAG_RD, vap,
 	    0, ieee80211_ratectl_sysctl_stats, "A", "ratectl node stats");
-#else
-	SYSCTL_ADD_PROC(vap->iv_sysctl, SYSCTL_CHILDREN(vap->iv_oid), OID_AUTO,
-	    "rate_stats", CTLTYPE_STRING | CTLFLAG_RD | CTLFLAG_MPSAFE, vap,
-	    0, ieee80211_ratectl_sysctl_stats, "A", "ratectl node stats");
-#endif
 }
 
 void

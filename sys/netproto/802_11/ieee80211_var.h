@@ -34,14 +34,8 @@
 /* NB: portability glue must go first */
 #if defined(__NetBSD__)
 #include <netproto/802_11/ieee80211_netbsd.h>
-#elif defined(__FreeBSD__)
-#include <netproto/802_11/ieee80211_freebsd.h>
-#elif defined(__DragonFly__)
-#include <netproto/802_11/ieee80211_dragonfly.h>
-#elif defined(__linux__)
-#include <netproto/802_11/ieee80211_linux.h>
 #else
-#error	"No support for your operating system!"
+#include <netproto/802_11/ieee80211_dragonfly.h>
 #endif
 
 #include <netproto/802_11/_ieee80211.h>
@@ -139,13 +133,8 @@ struct ieee80211com {
 	struct task		ic_wme_task;	/* deferred WME update */
 	struct task		ic_restart_task; /* deferred device restart */
 
-#if defined(__DragonFly__)
 	uint64_t		ic_ierrors;	/* input errors */
 	uint64_t		ic_oerrors;	/* output errors */
-#else
-	counter_u64_t		ic_ierrors;	/* input errors */
-	counter_u64_t		ic_oerrors;	/* output errors */
-#endif
 
 	uint32_t		ic_flags;	/* state flags */
 	uint32_t		ic_flags_ext;	/* extended state flags */
@@ -527,13 +516,8 @@ struct ieee80211vap {
 	int			(*iv_newstate)(struct ieee80211vap *,
 				    enum ieee80211_state, int);
 	/* 802.3 output method for raw frame xmit */
-#if defined(__DragonFly__)
 	int			(*iv_output)(struct ifnet *, struct mbuf *,
 				    struct sockaddr *, struct rtentry *);
-#else
-	int			(*iv_output)(struct ifnet *, struct mbuf *,
-				    const struct sockaddr *, struct route *);
-#endif
 	uint64_t		iv_spare[6];
 };
 #ifdef MALLOC_DECLARE
@@ -731,11 +715,7 @@ struct ieee80211com *ieee80211_find_vap(const uint8_t mac[IEEE80211_ADDR_LEN]);
 struct ieee80211com *ieee80211_find_com(const char *name);
 int	ieee80211_media_change(struct ifnet *);
 void	ieee80211_media_status(struct ifnet *, struct ifmediareq *);
-#if defined(__DragonFly__)
 int	ieee80211_ioctl(struct ifnet *, u_long, caddr_t, struct ucred *);
-#else
-int	ieee80211_ioctl(struct ifnet *, u_long, caddr_t);
-#endif
 int	ieee80211_rate2media(struct ieee80211com *, int,
 		enum ieee80211_phymode);
 int	ieee80211_media2rate(int);

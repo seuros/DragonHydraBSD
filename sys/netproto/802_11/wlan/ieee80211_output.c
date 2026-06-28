@@ -48,9 +48,7 @@ __FBSDID("$FreeBSD$");
 #include <net/if_media.h>
 #include <net/vlan/if_vlan_var.h>
 
-#if defined(__DragonFly__)
 #include <net/ifq_var.h>
-#endif
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_regdomain.h>
@@ -76,10 +74,6 @@ __FBSDID("$FreeBSD$");
 #include <netinet/ip6.h>
 #endif
 
-#if defined(__DragonFly__)
-#else
-#include <security/mac/mac_framework.h>
-#endif
 
 #define	ETHER_HEADER_COPY(dst, src) \
 	memcpy(dst, src, sizeof(struct ether_header))
@@ -402,17 +396,10 @@ ieee80211_start_pkt(struct ieee80211vap *vap, struct mbuf *m)
 				/* XXX better status? */
 				return (ENOBUFS);
 			}
-#if defined(__DragonFly__)
 			IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
 			    "forward frame from DS SA(%s), DA(%s)\n",
 			    ether_sprintf(eh->ether_shost),
 			    ether_sprintf(eh->ether_dhost));
-#else
-			IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
-			    "forward frame from DS SA(%6D), DA(%6D)\n",
-			    eh->ether_shost, ":",
-			    eh->ether_dhost, ":");
-#endif
 			ieee80211_mesh_proxy_check(vap, eh->ether_shost);
 		}
 		ni = ieee80211_mesh_discover(vap, eh->ether_dhost, m);
@@ -460,7 +447,6 @@ ieee80211_start_pkt(struct ieee80211vap *vap, struct mbuf *m)
  * regardless of the return condition.
  */
 
-#if defined(__DragonFly__)
 
 void
 ieee80211_vap_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
@@ -535,65 +521,6 @@ ieee80211_vap_start(struct ifnet *ifp, struct ifaltq_subque *ifsq)
 	wlan_serialize_enter();
 }
 
-#else
-
-int
-ieee80211_vap_transmit(struct ifnet *ifp, struct mbuf *m)
-{
-	struct ieee80211vap *vap = ifp->if_softc;
-	struct ieee80211com *ic = vap->iv_ic;
-
-	/*
-	 * No data frames go out unless we're running.
-	 * Note in particular this covers CAC and CSA
-	 * states (though maybe we should check muting
-	 * for CSA).
-	 */
-	if (vap->iv_state != IEEE80211_S_RUN &&
-	    vap->iv_state != IEEE80211_S_SLEEP) {
-		IEEE80211_LOCK(ic);
-		/* re-check under the com lock to avoid races */
-		if (vap->iv_state != IEEE80211_S_RUN &&
-		    vap->iv_state != IEEE80211_S_SLEEP) {
-			IEEE80211_DPRINTF(vap, IEEE80211_MSG_OUTPUT,
-			    "%s: ignore queue, in %s state\n",
-			    __func__, ieee80211_state_name[vap->iv_state]);
-			vap->iv_stats.is_tx_badstate++;
-			IEEE80211_UNLOCK(ic);
-			ifp->if_drv_flags |= IFF_DRV_OACTIVE;
-			m_freem(m);
-			if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
-			return (ENETDOWN);
-		}
-		IEEE80211_UNLOCK(ic);
-	}
-
-	/*
-	 * Sanitize mbuf flags for net80211 use.  We cannot
-	 * clear M_PWR_SAV or M_MORE_DATA because these may
-	 * be set for frames that are re-submitted from the
-	 * power save queue.
-	 *
-	 * NB: This must be done before ieee80211_classify as
-	 *     it marks EAPOL in frames with M_EAPOL.
-	 */
-	m->m_flags &= ~(M_80211_TX - M_PWR_SAV - M_MORE_DATA);
-
-	/*
-	 * Bump to the packet transmission path.
-	 * The mbuf will be consumed here.
-	 */
-	return (ieee80211_start_pkt(vap, m));
-}
-
-void
-ieee80211_vap_qflush(struct ifnet *ifp)
-{
-
-	/* Empty for now */
-}
-
-#endif
 
 /*
  * 802.11 raw output routine.
@@ -645,15 +572,9 @@ ieee80211_raw_output(struct ieee80211vap *vap, struct ieee80211_node *ni,
  * connect bpf write calls to the 802.11 layer for injecting
  * raw 802.11 frames.
  */
-#if defined(__DragonFly__)
 int
 ieee80211_output(struct ifnet *ifp, struct mbuf *m,
 	struct sockaddr *dst, struct rtentry *rt)
-#else
-int
-ieee80211_output(struct ifnet *ifp, struct mbuf *m,
-	const struct sockaddr *dst, struct route *ro)
-#endif
 {
 #define senderr(e) do { error = (e); goto bad;} while (0)
 	struct ieee80211_node *ni = NULL;
@@ -663,13 +584,9 @@ ieee80211_output(struct ifnet *ifp, struct mbuf *m,
 	int error;
 	int ret;
 
-#if defined(__DragonFly__)
 	struct ifaltq_subque *ifsq;
 	ifsq = ifq_get_subq_default(&ifp->if_snd);
 	if (ifsq_is_oactive(ifsq)) {
-#else
-	if (ifp->if_drv_flags & IFF_DRV_OACTIVE) {
-#endif
 		/*
 		 * Short-circuit requests if the vap is marked OACTIVE
 		 * as this can happen because a packet came down through
@@ -686,13 +603,8 @@ ieee80211_output(struct ifnet *ifp, struct mbuf *m,
 	 * Hand to the 802.3 code if not tagged as
 	 * a raw 802.11 frame.
 	 */
-#if defined(__DragonFly__)
 	if (dst->sa_family != AF_IEEE80211)
 		return vap->iv_output(ifp, m, dst, rt);
-#else
-	if (dst->sa_family != AF_IEEE80211)
-		return vap->iv_output(ifp, m, dst, ro);
-#endif
 #ifdef MAC
 	error = mac_ifnet_check_transmit(ifp, m);
 	if (error)
@@ -1122,19 +1034,11 @@ ieee80211_classify(struct ieee80211_node *ni, struct mbuf *m)
 			IEEE80211_NODE_STAT(ni, tx_novlantag);
 			return 1;
 		}
-#if defined(__DragonFly__)
 		if (EVL_VLANOFTAG(m->m_pkthdr.ether_vlantag) !=
 		    EVL_VLANOFTAG(ni->ni_vlan)) {
 			IEEE80211_NODE_STAT(ni, tx_vlanmismatch);
 			return 1;
 		}
-#else
-		if (EVL_VLANOFTAG(m->m_pkthdr.ether_vtag) !=
-		    EVL_VLANOFTAG(ni->ni_vlan)) {
-			IEEE80211_NODE_STAT(ni, tx_vlanmismatch);
-			return 1;
-		}
-#endif
 		/* map vlan priority to AC */
 		v_wme_ac = TID_TO_WME_AC(EVL_PRIOFTAG(ni->ni_vlan));
 	}
@@ -1254,13 +1158,8 @@ ieee80211_mbuf_adjust(struct ieee80211vap *vap, int hdrsize,
 			m_freem(m);
 			return NULL;
 		}
-#if defined(__DragonFly__)
 		KASSERT(needed_space <= MHLEN,
 		   ("not enough room, need %u got %zd\n", needed_space, MHLEN));
-#else
-		KASSERT(needed_space <= MHLEN,
-		    ("not enough room, need %u got %d\n", needed_space, MHLEN));
-#endif
 		/*
 		 * Setup new mbuf to have leading space to prepend the
 		 * 802.11 header and any crypto header bits that are
@@ -3682,17 +3581,11 @@ ieee80211_tx_complete(struct ieee80211_node *ni, struct mbuf *m, int status)
 
 		if (status == 0) {
 			if_inc_counter(ifp, IFCOUNTER_OPACKETS, 1);
-#if defined(__DragonFly__)
 			/*
 			 * On DragonFly, IFCOUNTER_OBYTES and
 			 * IFCOUNTER_OMCASTS increments are currently done
 			 * by ifq_dispatch() already.
 			 */
-#else
-			if_inc_counter(ifp, IFCOUNTER_OBYTES, m->m_pkthdr.len);
-			if (m->m_flags & M_MCAST)
-				if_inc_counter(ifp, IFCOUNTER_OMCASTS, 1);
-#endif
 		} else
 			if_inc_counter(ifp, IFCOUNTER_OERRORS, 1);
 		if (m->m_flags & M_TXCB)

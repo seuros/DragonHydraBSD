@@ -159,12 +159,7 @@ ieee80211_ioctl_getwpaie(struct ieee80211vap *vap,
 
 	if (ireq->i_len < IEEE80211_ADDR_LEN)
 		return EINVAL;
-#if defined(__DragonFly__)
 	wpaie = kmalloc(sizeof(*wpaie), M_TEMP, M_INTWAIT | M_ZERO);
-#else
-	wpaie = IEEE80211_MALLOC(sizeof(*wpaie), M_TEMP,
-	    IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (wpaie == NULL)
 		return ENOMEM;
 	error = copyin(ireq->i_data, wpaie->wpa_macaddr, IEEE80211_ADDR_LEN);
@@ -335,12 +330,7 @@ ieee80211_ioctl_getscanresults(struct ieee80211vap *vap,
 
 		space = req.space;
 		/* XXX M_WAITOK after driver lock released */
-#if defined(__DragonFly__)
 		p = kmalloc(space, M_TEMP, M_INTWAIT | M_ZERO);
-#else
-		p = IEEE80211_MALLOC(space, M_TEMP,
-			IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 		if (p == NULL)
 			return ENOMEM;
 		req.sr = p;
@@ -490,12 +480,7 @@ getstainfo_common(struct ieee80211vap *vap, struct ieee80211req *ireq,
 	if (req.space > 0) {
 		space = req.space;
 		/* XXX M_WAITOK after driver lock released */
-#if defined(__DragonFly__)
 		p = kmalloc(space, M_TEMP, M_INTWAIT | M_ZERO);
-#else
-		p = IEEE80211_MALLOC(space, M_TEMP,
-			IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 		if (p == NULL) {
 			error = ENOMEM;
 			goto bad;
@@ -718,14 +703,8 @@ ieee80211_ioctl_getdevcaps(struct ieee80211com *ic,
 	/* constrain max request size, 2K channels is ~24Kbytes */
 	if (maxchans > 2048)
 		maxchans = 2048;
-#if defined(__DragonFly__)
 	dc = (struct ieee80211_devcaps_req *)
 	    kmalloc(IEEE80211_DEVCAPS_SIZE(maxchans), M_TEMP, M_INTWAIT | M_ZERO);
-#else
-	dc = (struct ieee80211_devcaps_req *)
-	    IEEE80211_MALLOC(IEEE80211_DEVCAPS_SIZE(maxchans), M_TEMP,
-		IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (dc == NULL)
 		return ENOMEM;
 	dc->dc_drivercaps = ic->ic_caps;
@@ -1580,12 +1559,7 @@ setmlme_assoc_adhoc(struct ieee80211vap *vap,
 	if (ssid_len == 0)
 		return EINVAL;
 
-#if defined(__DragonFly__)
 	sr = kmalloc(sizeof(*sr), M_TEMP, M_INTWAIT | M_ZERO);
-#else
-	sr = IEEE80211_MALLOC(sizeof(*sr), M_TEMP,
-	     IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (sr == NULL)
 		return ENOMEM;
 
@@ -1704,13 +1678,8 @@ ieee80211_ioctl_setchanlist(struct ieee80211vap *vap, struct ieee80211req *ireq)
 
 	if (ireq->i_len > sizeof(ic->ic_chan_active))
 		ireq->i_len = sizeof(ic->ic_chan_active);
-#if defined(__DragonFly__)
 	list = kmalloc(ireq->i_len + IEEE80211_CHAN_BYTES, M_TEMP,
 	    M_INTWAIT | M_ZERO);
-#else
-	list = IEEE80211_MALLOC(ireq->i_len + IEEE80211_CHAN_BYTES, M_TEMP,
-	    IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (list == NULL)
 		return ENOMEM;
 	error = copyin(ireq->i_data, list, ireq->i_len);
@@ -2137,14 +2106,8 @@ ieee80211_ioctl_setregdomain(struct ieee80211vap *vap,
 		    ireq->i_len, nchans);
 		return EINVAL;
 	}
-#if defined(__DragonFly__)
 	reg = (struct ieee80211_regdomain_req *)
 	    kmalloc(IEEE80211_REGDOMAIN_SIZE(nchans), M_TEMP, M_INTWAIT);
-#else
-	reg = (struct ieee80211_regdomain_req *)
-	    IEEE80211_MALLOC(IEEE80211_REGDOMAIN_SIZE(nchans), M_TEMP,
-		IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (reg == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_IOCTL,
 		    "%s: no memory, nchans %d\n", __func__, nchans);
@@ -2292,14 +2255,8 @@ setappie(struct ieee80211_appie **aie, const struct ieee80211req *ireq)
 	 *
 	 * XXX bad bad bad
 	 */
-#if defined(__DragonFly__)
 	napp = (struct ieee80211_appie *) kmalloc(
 	    sizeof(struct ieee80211_appie) + ireq->i_len, M_80211_NODE_IE, M_INTWAIT);
-#else
-	napp = (struct ieee80211_appie *) IEEE80211_MALLOC(
-	    sizeof(struct ieee80211_appie) + ireq->i_len, M_80211_NODE_IE,
-	    IEEE80211_M_NOWAIT);
-#endif
 	if (napp == NULL)
 		return ENOMEM;
 	/* XXX holding ic lock */
@@ -2572,12 +2529,7 @@ ieee80211_ioctl_scanreq(struct ieee80211vap *vap, struct ieee80211req *ireq)
 
 	if (ireq->i_len != sizeof(*sr))
 		return EINVAL;
-#if defined(__DragonFly__)
 	sr = kmalloc(sizeof(*sr), M_TEMP, M_INTWAIT | M_ZERO);
-#else
-	sr = IEEE80211_MALLOC(sizeof(*sr), M_TEMP,
-	     IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (sr == NULL)
 		return ENOMEM;
 	error = copyin(ireq->i_data, sr, sizeof(*sr));
@@ -3372,13 +3324,8 @@ ieee80211_ioctl_set80211(struct ieee80211vap *vap, u_long cmd, struct ieee80211r
 	return error;
 }
 
-#if defined(__DragonFly__)
 int
 ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *ucred)
-#else
-int
-ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
-#endif
 {
 	struct ieee80211vap *vap = ifp->if_softc;
 	struct ieee80211com *ic = vap->iv_ic;
@@ -3434,10 +3381,8 @@ ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 		IEEE80211_UNLOCK(ic);
 		/* Wait for parent ioctl handler if it was queued */
 		if (wait) {
-#if defined(__DragonFly__)
 			/* DragonFly: release serializer to avoid deadlock */
 			wlan_serialize_exit();
-#endif
 			ieee80211_waitfor_parent(ic);
 
 			/*
@@ -3448,9 +3393,7 @@ ieee80211_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 			    !IEEE80211_ADDR_EQ(vap->iv_myaddr, IF_LLADDR(ifp)))
 				IEEE80211_ADDR_COPY(vap->iv_myaddr,
 				    IF_LLADDR(ifp));
-#if defined(__DragonFly__)
 			wlan_serialize_enter();
-#endif
 		}
 		break;
 	case SIOCADDMULTI:

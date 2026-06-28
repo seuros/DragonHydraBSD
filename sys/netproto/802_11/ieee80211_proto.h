@@ -73,20 +73,13 @@ void	ieee80211_proto_detach(struct ieee80211com *);
 void	ieee80211_proto_vattach(struct ieee80211vap *);
 void	ieee80211_proto_vdetach(struct ieee80211vap *);
 
-#if defined(__DragonFly__)
 void	ieee80211_promisc(struct ieee80211vap *, int);
 void	ieee80211_allmulti(struct ieee80211vap *, int);
-#else
-void	ieee80211_promisc(struct ieee80211vap *, bool);
-void	ieee80211_allmulti(struct ieee80211vap *, bool);
-#endif
 void	ieee80211_syncflag(struct ieee80211vap *, int flag);
 void	ieee80211_syncflag_ht(struct ieee80211vap *, int flag);
 void	ieee80211_syncflag_ext(struct ieee80211vap *, int flag);
 
-#if defined(__DragonFly__)
 struct route;
-#endif
 
 #define	ieee80211_input(ni, m, rssi, nf) \
 	((ni)->ni_vap->iv_input(ni, m, NULL, rssi, nf))
@@ -102,13 +95,8 @@ int	ieee80211_mgmt_output(struct ieee80211_node *, struct mbuf *, int,
 		struct ieee80211_bpf_params *);
 int	ieee80211_raw_xmit(struct ieee80211_node *, struct mbuf *,
 		const struct ieee80211_bpf_params *);
-#if defined(__DragonFly__)
 int	ieee80211_output(struct ifnet *, struct mbuf *,
                struct sockaddr *, struct rtentry *rt);
-#else
-int	ieee80211_output(struct ifnet *, struct mbuf *,
-               const struct sockaddr *, struct route *ro);
-#endif
 int	ieee80211_vap_pkt_send_dest(struct ieee80211vap *, struct mbuf *,
 		struct ieee80211_node *);
 int	ieee80211_raw_output(struct ieee80211vap *, struct ieee80211_node *,
@@ -116,9 +104,7 @@ int	ieee80211_raw_output(struct ieee80211vap *, struct ieee80211_node *,
 void	ieee80211_send_setup(struct ieee80211_node *, struct mbuf *, int, int,
         const uint8_t [IEEE80211_ADDR_LEN], const uint8_t [IEEE80211_ADDR_LEN],
         const uint8_t [IEEE80211_ADDR_LEN]);
-#if defined(__DragonFly__)
 void	ieee80211_vap_start(struct ifnet *ifp, struct ifaltq_subque *ifsq);
-#endif
 int	ieee80211_vap_transmit(struct ifnet *ifp, struct mbuf *m);
 void	ieee80211_vap_qflush(struct ifnet *ifp);
 int	ieee80211_send_nulldata(struct ieee80211_node *);

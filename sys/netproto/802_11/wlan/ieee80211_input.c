@@ -43,11 +43,7 @@ __FBSDID("$FreeBSD$");
 #include <net/if_var.h>
 #include <net/if_llc.h>
 #include <net/if_media.h>
-#if defined(__DragonFly__)
 #include <net/vlan/if_vlan_var.h>
-#else
-#include <net/if_vlan_var.h>
-#endif
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_input.h>
@@ -248,13 +244,9 @@ ieee80211_defrag(struct ieee80211_node *ni, struct mbuf *m, int hdrspace)
 		mfrag = m;
 	} else {				/* concatenate */
 		m_adj(m, hdrspace);		/* strip header */
-#if defined(__DragonFly__)
 		m_cat(mfrag, m);
 		/* NB: m_cat doesn't update the packet header */
 		mfrag->m_pkthdr.len += m->m_pkthdr.len;
-#else
-		m_catpkt(mfrag, m);
-#endif
 		/* track last seqnum and fragno */
 		lwh = mtod(mfrag, struct ieee80211_frame *);
 		*(uint16_t *) lwh->i_seq = *(uint16_t *) wh->i_seq;
@@ -276,10 +268,6 @@ ieee80211_deliver_data(struct ieee80211vap *vap,
 
 	/* clear driver/net80211 flags before passing up */
 	m->m_flags &= ~(M_MCAST | M_BCAST);
-#if defined(__DragonFly__)
-#else
-	m_clrprotoflags(m);
-#endif
 
 	/* NB: see hostap_deliver_data, this path doesn't handle hostap */
 	KASSERT(vap->iv_opmode != IEEE80211_M_HOSTAP, ("gack, hostap"));
@@ -298,18 +286,10 @@ ieee80211_deliver_data(struct ieee80211vap *vap,
 
 	if (ni->ni_vlan != 0) {
 		/* attach vlan tag */
-#if defined(__DragonFly__)
 		m->m_pkthdr.ether_vlantag = ni->ni_vlan;
-#else
-		m->m_pkthdr.ether_vtag = ni->ni_vlan;
-#endif
 		m->m_flags |= M_VLANTAG;
 	}
-#if defined(__DragonFly__)
 	ifp->if_input(ifp, m, NULL, -1);
-#else
-	ifp->if_input(ifp, m);
-#endif
 }
 
 struct mbuf *
@@ -481,14 +461,8 @@ int
 ieee80211_alloc_challenge(struct ieee80211_node *ni)
 {
 	if (ni->ni_challenge == NULL)
-#if defined(__DragonFly__)
 		ni->ni_challenge = (uint32_t *) kmalloc(IEEE80211_CHALLENGE_LEN,
 		    M_80211_NODE, M_INTWAIT);
-#else
-		ni->ni_challenge = (uint32_t *)
-		    IEEE80211_MALLOC(IEEE80211_CHALLENGE_LEN,
-			M_80211_NODE, IEEE80211_M_NOWAIT);
-#endif
 	if (ni->ni_challenge == NULL) {
 		IEEE80211_NOTE(ni->ni_vap,
 		    IEEE80211_MSG_DEBUG | IEEE80211_MSG_AUTH, ni,
@@ -904,19 +878,11 @@ void
 ieee80211_note(const struct ieee80211vap *vap, const char *fmt, ...)
 {
 	char buf[128];		/* XXX */
-#if defined(__DragonFly__)
 	osdep_va_list ap;
 
 	osdep_va_start(ap, fmt);
 	kvsnprintf(buf, sizeof(buf), fmt, ap);
 	osdep_va_end(ap);
-#else
-	va_list ap;
-
-	va_start(ap, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, ap);
-	va_end(ap);
-#endif
 
 	if_printf(vap->iv_ifp, "%s", buf);	/* NB: no \n */
 }
@@ -927,19 +893,11 @@ ieee80211_note_frame(const struct ieee80211vap *vap,
 	const char *fmt, ...)
 {
 	char buf[128];		/* XXX */
-#if defined(__DragonFly__)
 	osdep_va_list ap;
 
 	osdep_va_start(ap, fmt);
 	kvsnprintf(buf, sizeof(buf), fmt, ap);
 	osdep_va_end(ap);
-#else
-	va_list ap;
-
-	va_start(ap, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, ap);
-	va_end(ap);
-#endif
 	if_printf(vap->iv_ifp, "[%s] %s\n",
 		ether_sprintf(ieee80211_getbssid(vap, wh)), buf);
 }
@@ -950,19 +908,11 @@ ieee80211_note_mac(const struct ieee80211vap *vap,
 	const char *fmt, ...)
 {
 	char buf[128];		/* XXX */
-#if defined(__DragonFly__)
 	osdep_va_list ap;
 
 	osdep_va_start(ap, fmt);
 	kvsnprintf(buf, sizeof(buf), fmt, ap);
 	osdep_va_end(ap);
-#else
-	va_list ap;
-
-	va_start(ap, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, ap);
-	va_end(ap);
-#endif
 	if_printf(vap->iv_ifp, "[%s] %s\n", ether_sprintf(mac), buf);
 }
 
@@ -971,7 +921,6 @@ ieee80211_discard_frame(const struct ieee80211vap *vap,
 	const struct ieee80211_frame *wh,
 	const char *type, const char *fmt, ...)
 {
-#if defined(__DragonFly__)
 	osdep_va_list ap;
 
 	if_printf(vap->iv_ifp, "[%s] discard ",
@@ -981,17 +930,6 @@ ieee80211_discard_frame(const struct ieee80211vap *vap,
 	osdep_va_start(ap, fmt);
 	kvprintf(fmt, ap);
 	osdep_va_end(ap);
-#else
-	va_list ap;
-
-	if_printf(vap->iv_ifp, "[%s] discard ",
-		ether_sprintf(ieee80211_getbssid(vap, wh)));
-	printf("%s frame, ", type != NULL ? type :
-	    ieee80211_mgt_subtype_name(wh->i_fc[0]));
-	va_start(ap, fmt);
-	vprintf(fmt, ap);
-	va_end(ap);
-#endif
 	kprintf("\n");
 }
 
@@ -1002,7 +940,6 @@ ieee80211_discard_ie(const struct ieee80211vap *vap,
 {
 	osdep_va_list ap;
 
-#if defined(__DragonFly__)
 	if_printf(vap->iv_ifp, "[%s] discard ",
 		ether_sprintf(ieee80211_getbssid(vap, wh)));
 	if (type != NULL)
@@ -1013,18 +950,6 @@ ieee80211_discard_ie(const struct ieee80211vap *vap,
 	kvprintf(fmt, ap);
 	osdep_va_end(ap);
 	kprintf("\n");
-#else
-	if_printf(vap->iv_ifp, "[%s] discard ",
-		ether_sprintf(ieee80211_getbssid(vap, wh)));
-	if (type != NULL)
-		printf("%s information element, ", type);
-	else
-		printf("information element, ");
-	va_start(ap, fmt);
-	vprintf(fmt, ap);
-	va_end(ap);
-	printf("\n");
-#endif
 }
 
 void
@@ -1032,7 +957,6 @@ ieee80211_discard_mac(const struct ieee80211vap *vap,
 	const uint8_t mac[IEEE80211_ADDR_LEN],
 	const char *type, const char *fmt, ...)
 {
-#if defined(__DragonFly__)
 	osdep_va_list ap;
 
 	if_printf(vap->iv_ifp, "[%s] discard ", ether_sprintf(mac));
@@ -1043,18 +967,6 @@ ieee80211_discard_mac(const struct ieee80211vap *vap,
 	osdep_va_start(ap, fmt);
 	kvprintf(fmt, ap);
 	osdep_va_end(ap);
-#else
-	va_list ap;
-
-	if_printf(vap->iv_ifp, "[%s] discard ", ether_sprintf(mac));
-	if (type != NULL)
-		printf("%s frame, ", type);
-	else
-		printf("frame, ");
-	va_start(ap, fmt);
-	vprintf(fmt, ap);
-	va_end(ap);
-#endif
 	kprintf("\n");
 }
 #endif /* IEEE80211_DEBUG */

@@ -48,9 +48,7 @@ __FBSDID("$FreeBSD$");
 #include <net/if_media.h>
 #include <net/ethernet.h>		/* XXX for ether_sprintf */
 
-#if defined(__DragonFly__)
 #include <net/ifq_var.h>
-#endif
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_adhoc.h>
@@ -339,11 +337,7 @@ ieee80211_proto_vattach(struct ieee80211vap *vap)
 	vap->iv_fragthreshold = IEEE80211_FRAG_DEFAULT;
 	vap->iv_bmiss_max = IEEE80211_BMISS_MAX;
 	callout_init_mtx(&vap->iv_swbmiss, IEEE80211_LOCK_OBJ(ic), 0);
-#if defined(__DragonFly__)
 	callout_init_mp(&vap->iv_mgtsend);
-#else
-	callout_init(&vap->iv_mgtsend, 1);
-#endif
 	TASK_INIT(&vap->iv_nstate_task, 0, ieee80211_newstate_cb, vap);
 	TASK_INIT(&vap->iv_swbmiss_task, 0, beacon_swmiss, vap);
 	/*
@@ -1648,11 +1642,7 @@ ieee80211_restart_all(struct ieee80211com *ic)
 	 * NB: do not use ieee80211_runtask here, we will
 	 * block & drain net80211 taskqueue.
 	 */
-#if defined(__DragonFly__)
 	taskqueue_enqueue(taskqueue_thread[0], &ic->ic_restart_task);
-#else
-	taskqueue_enqueue(taskqueue_thread, &ic->ic_restart_task);
-#endif
 }
 
 void
@@ -2002,7 +1992,6 @@ ieee80211_newstate_cb(void *xvap, int npending)
 		 * Note this can also happen as a result of SLEEP->RUN
 		 * (i.e. coming out of power save mode).
 		 */
-#if defined(__DragonFly__)
 		struct ifaltq_subque *ifsq;
 		int wst;
 
@@ -2011,9 +2000,6 @@ ieee80211_newstate_cb(void *xvap, int npending)
 		wst = wlan_serialize_push();
 		vap->iv_ifp->if_start(vap->iv_ifp, ifsq);
 		wlan_serialize_pop(wst);
-#else
-		vap->iv_ifp->if_drv_flags &= ~IFF_DRV_OACTIVE;
-#endif
 
 		/*
 		 * XXX TODO Kick-start a VAP queue - this should be a method!

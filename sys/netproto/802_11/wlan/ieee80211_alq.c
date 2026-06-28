@@ -24,9 +24,6 @@
  */
 
 #include <sys/cdefs.h>
-#ifdef __FreeBSD__
-__FBSDID("$FreeBSD$");
-#endif
 
 /*
  * net80211 fast-logging support, primarily for debugging.

@@ -657,13 +657,8 @@ scan_start(void *arg, int pending)
 			/* Enable station power save mode */
 			vap->iv_sta_ps(vap, 1);
 			/* Wait until null data frame will be ACK'ed */
-#if defined(__DragonFly__)
 			lksleep(vap, IEEE80211_LOCK_OBJ(ic), PCATCH,
 			    "sta_ps", msecs_to_ticks(10));
-#else
-			mtx_sleep(vap, IEEE80211_LOCK_OBJ(ic), PCATCH,
-			    "sta_ps", msecs_to_ticks(10));
-#endif
 			if (ss_priv->ss_iflags & ISCAN_ABORT) {
 				scan_done(ss, 0);
 				return;
@@ -1008,13 +1003,8 @@ ieee80211_swscan_attach(struct ieee80211com *ic)
 	ic->ic_scan_methods = &swscan_methods;
 
 	/* Allocate initial scan state */
-#if defined(__DragonFly__)
 	ss = (struct scan_state *) kmalloc(sizeof(struct scan_state),
 		M_80211_SCAN, M_INTWAIT | M_ZERO);
-#else
-	ss = (struct scan_state *) IEEE80211_MALLOC(sizeof(struct scan_state),
-		M_80211_SCAN, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (ss == NULL) {
 		ic->ic_scan = NULL;
 		return;

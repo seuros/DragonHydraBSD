@@ -114,11 +114,7 @@ ieee80211_node_attach(struct ieee80211com *ic)
 	    "802.11 staging q");
 	ieee80211_node_table_init(ic, &ic->ic_sta, "station",
 		IEEE80211_INACT_INIT, ic->ic_max_keyix);
-#if defined(__DragonFly__)
 	callout_init_mp(&ic->ic_inact);
-#else
-	callout_init(&ic->ic_inact, 1);
-#endif
 	callout_reset(&ic->ic_inact, IEEE80211_INACT_WAIT*hz,
 		ieee80211_node_timeout, ic);
 
@@ -176,16 +172,9 @@ ieee80211_node_latevattach(struct ieee80211vap *vap)
 			    "WARNING: max aid too small, changed to %d\n",
 			    vap->iv_max_aid);
 		}
-#if defined(__DragonFly__)
 		vap->iv_aid_bitmap = (uint32_t *) kmalloc(
 			howmany(vap->iv_max_aid, 32) * sizeof(uint32_t),
 			M_80211_NODE, M_INTWAIT | M_ZERO);
-#else
-		vap->iv_aid_bitmap = (uint32_t *) IEEE80211_MALLOC(
-			howmany(vap->iv_max_aid, 32) * sizeof(uint32_t),
-			M_80211_NODE,
-			IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 		if (vap->iv_aid_bitmap == NULL) {
 			/* XXX no way to recover */
 			kprintf("%s: no memory for AID bitmap, max aid %d!\n",
@@ -918,13 +907,8 @@ node_alloc(struct ieee80211vap *vap, const uint8_t macaddr[IEEE80211_ADDR_LEN])
 {
 	struct ieee80211_node *ni;
 
-#if defined(__DragonFly__)
 	ni = (struct ieee80211_node *) kmalloc(sizeof(struct ieee80211_node),
 		M_80211_NODE, M_INTWAIT | M_ZERO);
-#else
-	ni = (struct ieee80211_node *) IEEE80211_MALLOC(sizeof(struct ieee80211_node),
-		M_80211_NODE, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	return ni;
 }
 
@@ -945,14 +929,8 @@ ieee80211_ies_init(struct ieee80211_ies *ies, const uint8_t *data, int len)
 		ies->data = NULL;
 	}
 	if (ies->data == NULL) {
-#if defined(__DragonFly__)
 		ies->data = (uint8_t *) kmalloc(len,
 			M_80211_NODE_IE, M_INTWAIT | M_ZERO);
-#else
-		ies->data = (uint8_t *) IEEE80211_MALLOC(len, M_80211_NODE_IE,
-			IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-
-#endif
 		if (ies->data == NULL) {
 			ies->len = 0;
 			/* NB: pointers have already been zero'd above */
@@ -1956,16 +1934,9 @@ ieee80211_node_table_init(struct ieee80211com *ic,
 	nt->nt_inact_init = inact;
 	nt->nt_keyixmax = keyixmax;
 	if (nt->nt_keyixmax > 0) {
-#if defined(__DragonFly__)
 		nt->nt_keyixmap = (struct ieee80211_node **) kmalloc(
 			keyixmax * sizeof(struct ieee80211_node *),
 			M_80211_NODE, M_INTWAIT | M_ZERO);
-#else
-		nt->nt_keyixmap = (struct ieee80211_node **) IEEE80211_MALLOC(
-			keyixmax * sizeof(struct ieee80211_node *),
-			M_80211_NODE,
-			IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 		if (nt->nt_keyixmap == NULL)
 			ic_printf(ic,
 			    "Cannot allocate key index map with %u entries\n",
@@ -2363,13 +2334,8 @@ ieee80211_iterate_nodes(struct ieee80211_node_table *nt,
 		max_aid = vap->iv_max_aid;
 
 	size = max_aid * sizeof(struct ieee80211_node *);
-#if defined(__DragonFly__)
 	ni_arr = (struct ieee80211_node **) kmalloc(size, M_80211_NODE,
 		M_INTWAIT | M_ZERO);
-#else
-	ni_arr = (struct ieee80211_node **) IEEE80211_MALLOC(size, M_80211_NODE,
-		IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (ni_arr == NULL)
 		return;
 

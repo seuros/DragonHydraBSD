@@ -24,9 +24,6 @@
  */
 
 #include <sys/cdefs.h>
-#ifdef __FreeBSD__
-__FBSDID("$FreeBSD$");
-#endif
 
 /*
  * IEEE 802.11 DFS/Radar support.
@@ -265,12 +262,8 @@ dfs_timeout(void *arg)
 	}
 	if (oldest != now) {
 		/* arrange to process next channel up for a status change */
-#if defined(__DragonFly__)
 		callout_schedule_dfly(&dfs->nol_timer, oldest + NOL_TIMEOUT - now,
 				dfs_timeout, ic);
-#else
-		callout_schedule(&dfs->nol_timer, oldest + NOL_TIMEOUT - now);
-#endif
 	}
 }
 
@@ -370,13 +363,9 @@ ieee80211_dfs_notify_radar(struct ieee80211com *ic, struct ieee80211_channel *ch
 		announce_radar(ic, chan, dfs->newchan);
 
 		if (callout_pending(&dfs->cac_timer))
-#if defined(__DragonFly__)
 			callout_schedule_dfly(&dfs->cac_timer, 0,
 					      cac_timeout,
 					      callout_arg(&dfs->cac_timer));
-#else
-			callout_schedule(&dfs->cac_timer, 0);
-#endif
 		else if (dfs->newchan != NULL) {
 			/* XXX mode 1, switch count 2 */
 			/* XXX calculate switch count based on max

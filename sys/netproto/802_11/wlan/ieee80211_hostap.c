@@ -24,9 +24,6 @@
  */
 
 #include <sys/cdefs.h>
-#ifdef __FreeBSD__
-__FBSDID("$FreeBSD$");
-#endif
 
 /*
  * IEEE 802.11 HOSTAP mode support.
@@ -357,12 +354,7 @@ hostap_deliver_data(struct ieee80211vap *vap,
 	struct ifnet *ifp = vap->iv_ifp;
 
 	/* clear driver/net80211 flags before passing up */
-#if defined(__DragonFly__)
 	m->m_flags &= ~(M_80211_RX | M_MCAST | M_BCAST);
-#else
-	m->m_flags &= ~(M_MCAST | M_BCAST);
-	m_clrprotoflags(m);
-#endif
 
 	KASSERT(vap->iv_opmode == IEEE80211_M_HOSTAP,
 	    ("gack, opmode %d", vap->iv_opmode));
@@ -441,19 +433,11 @@ hostap_deliver_data(struct ieee80211vap *vap,
 		}
 		if (ni->ni_vlan != 0) {
 			/* attach vlan tag */
-#if defined(__DragonFly__)
 			/* XXX ntohs() needed? */
 			m->m_pkthdr.ether_vlantag = ni->ni_vlan;
-#else
-			m->m_pkthdr.ether_vtag = ni->ni_vlan;
-#endif
 			m->m_flags |= M_VLANTAG;
 		}
-#if defined(__DragonFly__)
 		ifp->if_input(ifp, m, NULL, -1);
-#else
-		ifp->if_input(ifp, m);
-#endif
 	}
 }
 

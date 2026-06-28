@@ -112,13 +112,8 @@ amrr_init(struct ieee80211vap *vap)
 
 	KASSERT(vap->iv_rs == NULL, ("%s called multiple times", __func__));
 
-#if defined(__DragonFly__)
 	amrr = vap->iv_rs = kmalloc(sizeof(struct ieee80211_amrr),
 	    M_80211_RATECTL, M_INTWAIT|M_ZERO);
-#else
-	amrr = vap->iv_rs = IEEE80211_MALLOC(sizeof(struct ieee80211_amrr),
-	    M_80211_RATECTL, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (amrr == NULL) {
 		if_printf(vap->iv_ifp, "couldn't alloc ratectl structure\n");
 		return;
@@ -164,13 +159,8 @@ amrr_node_init(struct ieee80211_node *ni)
 	uint8_t rate;
 
 	if (ni->ni_rctls == NULL) {
-#if defined(__DragonFly__)
 		ni->ni_rctls = amn = kmalloc(sizeof(struct ieee80211_amrr_node),
 		    M_80211_RATECTL, M_INTWAIT|M_ZERO);
-#else
-		ni->ni_rctls = amn = IEEE80211_MALLOC(sizeof(struct ieee80211_amrr_node),
-		    M_80211_RATECTL, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 		if (amn == NULL) {
 			if_printf(vap->iv_ifp, "couldn't alloc per-node ratectl "
 			    "structure\n");

@@ -578,7 +578,6 @@ struct ieee80211req_sta_vlan {
 	uint16_t	sv_vlan;
 };
 
-#if defined(__FreeBSD__) || defined(__DragonFly__)
 /*
  * FreeBSD-style ioctls.
  */
@@ -860,6 +859,5 @@ struct ieee80211_clone_params {
 #define	IEEE80211_CLONE_WDSLEGACY	0x0004	/* legacy WDS processing */
 #define	IEEE80211_CLONE_MACADDR		0x0008	/* use specified mac addr */
 #define	IEEE80211_CLONE_TDMA		0x0010	/* operate in TDMA mode */
-#endif /* __FreeBSD__ */
 
 #endif /* _NET80211_IEEE80211_IOCTL_H_ */

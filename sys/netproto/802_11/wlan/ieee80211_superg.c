@@ -100,15 +100,9 @@ ieee80211_superg_attach(struct ieee80211com *ic)
 {
 	struct ieee80211_superg *sg;
 
-#if defined(__DragonFly__)
 	sg = (struct ieee80211_superg *) kmalloc(
 		sizeof(struct ieee80211_superg), M_80211_VAP,
 		M_INTWAIT | M_ZERO);
-#else
-	sg = (struct ieee80211_superg *) IEEE80211_MALLOC(
-		sizeof(struct ieee80211_superg), M_80211_VAP,
-		IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (sg == NULL) {
 		kprintf("%s: cannot allocate SuperG state block\n",
 		    __func__);

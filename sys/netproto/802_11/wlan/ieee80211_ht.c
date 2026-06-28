@@ -24,9 +24,6 @@
  */
 
 #include <sys/cdefs.h>
-#ifdef __FreeBSD__
-__FBSDID("$FreeBSD$");
-#endif
 
 /*
  * IEEE 802.11n protocol support.
@@ -1716,11 +1713,7 @@ ieee80211_setup_basic_htrates(struct ieee80211_node *ni, const uint8_t *ie)
 static void
 ampdu_tx_setup(struct ieee80211_tx_ampdu *tap)
 {
-#if defined(__DragonFly__)
 	callout_init_mp(&tap->txa_timer);
-#else
-	callout_init(&tap->txa_timer, 1);
-#endif
 	tap->txa_flags |= IEEE80211_AGGR_SETUP;
 	tap->txa_lastsample = ticks;
 }

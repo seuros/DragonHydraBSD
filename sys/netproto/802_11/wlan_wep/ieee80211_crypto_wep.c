@@ -90,13 +90,8 @@ wep_attach(struct ieee80211vap *vap, struct ieee80211_key *k)
 {
 	struct wep_ctx *ctx;
 
-#if defined(__DragonFly__)
 	ctx = (struct wep_ctx *) kmalloc(sizeof(struct wep_ctx),
 		M_80211_CRYPTO, M_INTWAIT | M_ZERO);
-#else
-	ctx = (struct wep_ctx *) IEEE80211_MALLOC(sizeof(struct wep_ctx),
-		M_80211_CRYPTO, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (ctx == NULL) {
 		vap->iv_stats.is_crypto_nomem++;
 		return NULL;

@@ -161,14 +161,8 @@ sta_attach(struct ieee80211_scan_state *ss)
 {
 	struct sta_table *st;
 
-#if defined(__DragonFly__)
 	st = (struct sta_table *) kmalloc(sizeof(struct sta_table),
 		M_80211_SCAN, M_INTWAIT | M_ZERO);
-#else
-	st = (struct sta_table *) IEEE80211_MALLOC(sizeof(struct sta_table),
-		M_80211_SCAN,
-		IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (st == NULL)
 		return 0;
 	IEEE80211_SCAN_TABLE_LOCK_INIT(st, "scantable");
@@ -260,13 +254,8 @@ sta_add(struct ieee80211_scan_state *ss,
 	LIST_FOREACH(se, &st->st_hash[hash], se_hash)
 		if (IEEE80211_ADDR_EQ(se->base.se_macaddr, macaddr))
 			goto found;
-#if defined(__DragonFly__)
 	se = (struct sta_entry *) kmalloc(sizeof(struct sta_entry),
 		M_80211_SCAN, M_INTWAIT | M_ZERO);
-#else
-	se = (struct sta_entry *) IEEE80211_MALLOC(sizeof(struct sta_entry),
-		M_80211_SCAN, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (se == NULL) {
 		IEEE80211_SCAN_TABLE_UNLOCK(st);
 		return 0;

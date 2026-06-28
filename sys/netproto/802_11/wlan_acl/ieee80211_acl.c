@@ -101,13 +101,8 @@ acl_attach(struct ieee80211vap *vap)
 {
 	struct aclstate *as;
 
-#if defined(__DragonFly__)
 	as = (struct aclstate *) kmalloc(sizeof(struct aclstate),
 		M_80211_ACL, M_INTWAIT | M_ZERO);
-#else
-	as = (struct aclstate *) IEEE80211_MALLOC(sizeof(struct aclstate),
-		M_80211_ACL, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (as == NULL)
 		return 0;
 	ACL_LOCK_INIT(as, "acl");
@@ -182,13 +177,8 @@ acl_add(struct ieee80211vap *vap, const uint8_t mac[IEEE80211_ADDR_LEN])
 	struct acl *acl, *new;
 	int hash;
 
-#if defined(__DragonFly__)
 	new = (struct acl *) kmalloc(sizeof(struct acl),
 		M_80211_ACL, M_INTWAIT | M_ZERO);
-#else
-	new = (struct acl *) IEEE80211_MALLOC(sizeof(struct acl),
-		M_80211_ACL, IEEE80211_M_NOWAIT | IEEE80211_M_ZERO);
-#endif
 	if (new == NULL) {
 		IEEE80211_DPRINTF(vap, IEEE80211_MSG_ACL,
 			"ACL: add %s failed, no memory\n", ether_sprintf(mac));
@@ -315,13 +305,8 @@ acl_getioctl(struct ieee80211vap *vap, struct ieee80211req *ireq)
 			ireq->i_len = space;	/* return required space */
 			return 0;		/* NB: must not error */
 		}
-#if defined(__DragonFly__)
 		ap = (struct ieee80211req_maclist *) kmalloc(space,
 		    M_TEMP, M_INTWAIT);
-#else
-		ap = (struct ieee80211req_maclist *) IEEE80211_MALLOC(space,
-		    M_TEMP, IEEE80211_M_NOWAIT);
-#endif
 		if (ap == NULL)
 			return ENOMEM;
 		i = 0;

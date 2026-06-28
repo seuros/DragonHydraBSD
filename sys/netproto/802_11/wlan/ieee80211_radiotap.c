@@ -48,7 +48,6 @@ __FBSDID("$FreeBSD$");
 
 #include <netproto/802_11/ieee80211_var.h>
 
-#if defined(__DragonFly__)
 #define bpf_mtap2(rawbpf, rh, len, m)			\
 	{						\
 		bpf_gettoken();				\
@@ -56,7 +55,6 @@ __FBSDID("$FreeBSD$");
 			bpf_ptap(rawbpf, m, rh, len);	\
 		bpf_reltoken();				\
 	}
-#endif
 
 static int radiotap_offset(struct ieee80211_radiotap_header *, int, int);
 
@@ -125,17 +123,10 @@ ieee80211_radiotap_vattach(struct ieee80211vap *vap)
 	struct ieee80211_radiotap_header *th = ic->ic_th;
 
 	if (th != NULL && ic->ic_rh != NULL) {
-#if defined(__DragonFly__)
 		bpfattach_dlt(vap->iv_ifp, DLT_IEEE802_11_RADIO,
 			      sizeof(struct ieee80211_frame) +
 				le16toh(th->it_len),
 			      &vap->iv_rawbpf);
-#else
-		/* radiotap DLT for raw 802.11 frames */
-		bpfattach2(vap->iv_ifp, DLT_IEEE802_11_RADIO,
-		    sizeof(struct ieee80211_frame) + le16toh(th->it_len),
-		    &vap->iv_rawbpf);
-#endif
 	}
 }
 
