@@ -251,7 +251,18 @@ acpi_pcib_acpi_attach(device_t dev)
     if (sc->ap_segment == 0 && sc->ap_bus == 0)
 	    bus0_seen = 1;
 
-    return (acpi_pcib_attach(dev, &sc->ap_prt, sc->ap_bus));
+    acpi_pcib_fetch_prt(dev, &sc->ap_prt);
+
+    /*
+     * Attach the PCI bus proper. A host bridge may legitimately
+     * decode bus 0, so no secondary bus check here.
+     */
+    if (device_add_child(dev, "pci", sc->ap_bus) == NULL) {
+	device_printf(dev, "couldn't attach pci bus\n");
+	return (ENXIO);
+    }
+
+    return (bus_generic_attach(dev));
 }
 
 static int

@@ -332,22 +332,43 @@ pcib_attach_common(device_t dev)
     pci_enable_busmaster(dev);
 }
 
+/*
+ * Add the bridge's secondary bus as a "pci" child and scan it.
+ *
+ * Firmware may leave bridges unprogrammed (secbus 0, see ACPI 6.6
+ * sec 6.5.4/6.2.9) or with stale bus numbers; scanning through
+ * those would re-enumerate an ancestor bus.
+ */
 int
-pcib_attach(device_t dev)
+pcib_attach_child(device_t dev)
 {
     struct pcib_softc	*sc;
     device_t		child;
 
-    pcib_attach_common(dev);
     sc = device_get_softc(dev);
-    if (sc->secbus != 0) {
-	child = device_add_child(dev, "pci", sc->secbus);
-	if (child != NULL)
-	    return(bus_generic_attach(dev));
-    } 
+    if (sc->secbus == 0) {
+	/* no secondary bus; we should have fixed this */
+	return(0);
+    }
+    if (sc->secbus <= pci_get_bus(dev)) {
+	device_printf(dev,
+	    "bogus secondary bus %d <= primary bus %d, not scanning\n",
+	    sc->secbus, pci_get_bus(dev));
+	return(0);
+    }
 
-    /* no secondary bus; we should have fixed this */
+    child = device_add_child(dev, "pci", sc->secbus);
+    if (child != NULL)
+	return(bus_generic_attach(dev));
+
     return(0);
+}
+
+int
+pcib_attach(device_t dev)
+{
+    pcib_attach_common(dev);
+    return(pcib_attach_child(dev));
 }
 
 int

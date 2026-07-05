@@ -127,10 +127,9 @@ prt_attach_devices(ACPI_PCI_ROUTING_TABLE *entry, void *arg)
 	ACPI_ADR_PCI_SLOT(entry->Address), entry->Pin);
 }
 
-int
-acpi_pcib_attach(device_t dev, ACPI_BUFFER *prt, int busno)
+void
+acpi_pcib_fetch_prt(device_t dev, ACPI_BUFFER *prt)
 {
-    device_t			child;
     ACPI_STATUS			status;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
@@ -156,19 +155,9 @@ acpi_pcib_attach(device_t dev, ACPI_BUFFER *prt, int busno)
 	    acpi_name(acpi_get_handle(dev)), AcpiFormatException(status));
 
     /*
-     * Attach the PCI bus proper.
-     */
-    if ((child = device_add_child(dev, "pci", busno)) == NULL) {
-	device_printf(device_get_parent(dev), "couldn't attach pci bus\n");
-	return_VALUE(ENXIO);
-    }
-
-    /*
-     * Now go scan the bus.
+     * Ensure all the link devices are attached.
      */
     prt_walk_table(prt, prt_attach_devices, dev);
-
-    return_VALUE (bus_generic_attach(dev));
 }
 
 int
